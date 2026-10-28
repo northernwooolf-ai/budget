@@ -339,7 +339,8 @@ export const TxEditor = {
             <div class="picker">
               <label class="cat-search">
                 <icon name="search" :size="18"/>
-                <input v-model="query" type="search" placeholder="Поиск категории" aria-label="Поиск категории"
+                <!-- Не v-model: клавиатура телефона набирает слово «черновиком», и v-model ждёт его окончания. -->
+                <input :value="query" @input="query = $event.target.value" type="search" placeholder="Поиск категории" aria-label="Поиск категории"
                   autocomplete="off" enterkeyhint="done" @keydown.enter.prevent="pickFirstFound">
               </label>
               <template v-if="query.trim()">
