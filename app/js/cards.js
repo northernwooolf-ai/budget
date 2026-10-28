@@ -42,6 +42,13 @@ export function defaultStyle(account) {
 
 export const isCardType = (account) => account?.type === 'debit' || account?.type === 'credit';
 
+// Счета, которые не карты, рисуем плиткой того же размера, что и карта, с оттенком по типу счёта.
+const TYPE_TINTS = { cash: '#22c55e', deposit: '#ec4899', investment: '#6366f1', lent: '#f59e0b', borrowed: '#ef4444' };
+const tileBg = (type) => {
+  const tint = TYPE_TINTS[type] ?? '#64748b';
+  return `linear-gradient(135deg, color-mix(in srgb, ${tint} 32%, var(--surface-2)), color-mix(in srgb, ${tint} 12%, var(--surface-2)))`;
+};
+
 // Картинку карты обрезаем по центру под пропорции банковской карты и сжимаем,
 // чтобы она занимала в базе считанные килобайты.
 export async function cardImageFromFile(file) {
@@ -61,10 +68,11 @@ export const CardChip = {
   setup(props) {
     const style = computed(() => CARD_STYLES[props.account?.card_style] ?? CARD_STYLES[defaultStyle(props.account ?? {})]);
     const card = computed(() => isCardType(props.account) || !!props.account?.card_image);
-    return { style, card };
+    const tile = computed(() => tileBg(props.account?.type));
+    return { style, card, tile };
   },
   template: `
-    <span v-if="!card" :class="['acc-emoji', size]" aria-hidden="true">{{ account?.icon }}</span>
+    <span v-if="!card" :class="['acc-emoji', size]" :style="{ background: tile }" aria-hidden="true">{{ account?.icon }}</span>
     <span v-else-if="account.card_image" :class="['card-chip', size]" aria-hidden="true"
       :style="{ backgroundImage: 'url(' + account.card_image + ')' }"></span>
     <span v-else :class="['card-chip', size]" :style="{ background: style.bg, color: style.fg }" aria-hidden="true">

@@ -707,10 +707,15 @@ fieldset.plain:disabled { opacity: .75; }
 .card-chip.md { font-size: 20px; }
 .card-chip.lg { font-size: 30px; }
 .card-chip.xl { font-size: 64px; }
-.acc-emoji { flex: none; display: inline-grid; place-items: center; }
-.acc-emoji.sm { font-size: .95rem; }
-.acc-emoji.md { width: 38px; height: 38px; border-radius: 11px; background: var(--surface-2); font-size: 1.25rem; }
-.acc-emoji.lg { width: 53px; height: 53px; border-radius: 14px; background: var(--surface-2); font-size: 1.7rem; }
+/* Плитка счёта (не карты) — того же размера и формы, что карта. */
+.acc-emoji {
+  flex: none; display: inline-grid; place-items: center; line-height: 1;
+  border-radius: 6px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06), 0 1px 3px rgb(0 0 0 / .25);
+}
+.acc-emoji.sm { width: 32px; height: 20px; border-radius: 4px; font-size: .8rem; }
+.acc-emoji.md { width: 56px; height: 36px; font-size: 1.3rem; }
+.acc-emoji.lg { width: 84px; height: 53px; border-radius: 8px; font-size: 1.9rem; }
+.acc-emoji.xl { width: 220px; height: 139px; border-radius: 14px; font-size: 4rem; }
 .tx3-acc { display: inline-flex; align-items: center; gap: 6px; }
 .tx3 .z-right.tx3-acc { flex-direction: row-reverse; text-align: right; }
 .acc-name { min-width: 0; }
