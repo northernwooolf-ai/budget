@@ -1,12 +1,12 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610290213';
-import { state, isAdmin, updateMyName, updateHouseholdName, signOut, toast } from '../store.js?v=2610290213';
-import { isoDate, addMonths, downloadFile } from '../utils.js?v=2610290213';
-import { Icon } from '../components.js?v=2610290213';
-import { CategoriesSettings } from './categories-settings.js?v=2610290213';
-import { AppearanceSettings } from './appearance-settings.js?v=2610290213';
-import { SecuritySettings } from './lock-screen.js?v=2610290213';
-import { APP_VERSION } from '../config.js?v=2610290213';
+import { api } from '../api.js?v=2610290215';
+import { state, isAdmin, updateMyName, updateHouseholdName, signOut, toast } from '../store.js?v=2610290215';
+import { isoDate, addMonths, downloadFile } from '../utils.js?v=2610290215';
+import { Icon } from '../components.js?v=2610290215';
+import { CategoriesSettings } from './categories-settings.js?v=2610290215';
+import { AppearanceSettings } from './appearance-settings.js?v=2610290215';
+import { SecuritySettings } from './lock-screen.js?v=2610290215';
+import { APP_VERSION } from '../config.js?v=2610290215';
 
 export const SettingsView = {
   components: { Icon, CategoriesSettings, AppearanceSettings, SecuritySettings },
