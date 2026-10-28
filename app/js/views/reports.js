@@ -2,7 +2,7 @@ import { ref, computed, watch } from 'vue';
 import { api } from '../api.js';
 import { state } from '../store.js';
 import { expanded, toggleIn } from '../ui-state.js';
-import { money, isoDate, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js';
+import { rub, isoDate, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js';
 import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js';
 import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js';
 import { Icon, MonthSwitcher } from '../components.js';
@@ -112,7 +112,8 @@ export const ReportsView = {
 
     return {
       state, open, toggle, spendView, trendMode, months, subject, drill, spending, ring, selectSlice, limits,
-      history, historyError, trendSeries, expenseGroups, tree, groupLabel, money, Math,
+      history, historyError, trendSeries, expenseGroups, tree, groupLabel, Math,
+      money: rub, // в отчётах — итоги, показываем без копеек
     };
   },
   template: `

@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js';
 import { limitStatus } from '../categories.js';
 import { expanded, toggleIn } from '../ui-state.js';
-import { money, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js';
 import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js';
 import { Icon, Modal, EmojiPicker, ConfirmButton, vSortable } from '../components.js';
 import { useLookups } from './operations.js';
@@ -394,7 +394,7 @@ export const HomeView = {
 
     return {
       state, editing, viewing, startOpen, needsStart, collapsed, showArchive, toggle, groups, archived, totals, withDebts, month, alerts,
-      editAccount, reorder, money, monthLabel, Math, admin: computed(isAdmin),
+      editAccount, reorder, money, rub, monthLabel, Math, admin: computed(isAdmin),
     };
   },
   template: `
@@ -415,31 +415,31 @@ export const HomeView = {
           <span class="stat-label">{{ withDebts ? 'Доступно за вычетом долгов' : 'Доступные деньги' }}</span>
           <label class="check small"><input id="with-debts" type="checkbox" v-model="withDebts"> С учётом кредитов</label>
         </div>
-        <span :class="['hero', { negative: totals.hero < 0 }]">{{ money(totals.hero) }}</span>
+        <span :class="['hero', { negative: totals.hero < 0 }]">{{ rub(totals.hero) }}</span>
         <span class="hint">Наличные и дебетовые карты{{ withDebts ? ' минус кредиты и долги' : '' }}</span>
         <div class="kv-list">
           <div class="kv"><span>Доступные деньги</span>
-            <b :class="{ negative: totals.available < 0 }">{{ money(totals.available) }}</b></div>
+            <b :class="{ negative: totals.available < 0 }">{{ rub(totals.available) }}</b></div>
           <div class="kv"><span>Вклады и инвестиции</span>
-            <b :class="{ negative: totals.savings < 0 }">{{ money(totals.savings) }}</b></div>
-          <div class="kv"><span>Нам должны</span><b>{{ money(totals.owedToUs) }}</b></div>
+            <b :class="{ negative: totals.savings < 0 }">{{ rub(totals.savings) }}</b></div>
+          <div class="kv"><span>Нам должны</span><b>{{ rub(totals.owedToUs) }}</b></div>
           <div class="kv"><span>Мы должны и кредиты</span>
-            <b :class="{ negative: totals.weOwe > 0 }">{{ totals.weOwe > 0 ? '−' : '' }}{{ money(totals.weOwe) }}</b></div>
+            <b :class="{ negative: totals.weOwe > 0 }">{{ totals.weOwe > 0 ? '−' : '' }}{{ rub(totals.weOwe) }}</b></div>
           <div class="kv kv-total"><span>Всего с вкладами и долгами</span>
-            <b :class="{ negative: totals.total < 0 }">{{ money(totals.total) }}</b></div>
+            <b :class="{ negative: totals.total < 0 }">{{ rub(totals.total) }}</b></div>
         </div>
         <p v-if="totals.other > 0" class="hint kv-note">
-          ⚠ Не учтено: +{{ money(totals.other) }} на кредитных картах и кредитах — похоже, там записан лимит,
+          ⚠ Не учтено: +{{ rub(totals.other) }} на кредитных картах и кредитах — похоже, там записан лимит,
           а не долг. Поправьте остаток через «Изменить» в карточке счёта.
         </p>
         <!-- Как в таблице: месяц плашкой, ниже расходы — итог — доходы (в целых рублях, чтобы влезало). -->
         <div class="month-sum">
           <div class="month-sum-head">{{ monthLabel(state.month) }}</div>
           <div class="month-sum-row">
-            <div><small>Расходы</small><b class="negative">−{{ money(Math.round(month.expense)) }}</b></div>
+            <div><small>Расходы</small><b class="negative">−{{ rub(month.expense) }}</b></div>
             <div><small>Итог</small>
-              <b :class="month.diff < 0 ? 'negative' : 'income'">{{ Math.round(month.diff) > 0 ? '+' : '' }}{{ money(Math.round(month.diff)) }}</b></div>
-            <div><small>Доходы</small><b class="income">+{{ money(Math.round(month.income)) }}</b></div>
+              <b :class="month.diff < 0 ? 'negative' : 'income'">{{ Math.round(month.diff) > 0 ? '+' : '' }}{{ rub(month.diff) }}</b></div>
+            <div><small>Доходы</small><b class="income">+{{ rub(month.income) }}</b></div>
           </div>
         </div>
       </div>
@@ -463,7 +463,7 @@ export const HomeView = {
         <button class="group-head" :aria-expanded="!collapsed.has(g.id)" @click="toggle(g.id)">
           <icon name="down" :class="['chev', { closed: collapsed.has(g.id) }]" :size="18"/>
           <span class="group-title"><span aria-hidden="true">{{ g.icon }}</span> {{ g.label }} <span class="group-count">{{ g.items.length }}</span></span>
-          <span :class="['group-total', { negative: g.total < 0 }]">{{ money(g.total) }}</span>
+          <span :class="['group-total', { negative: g.total < 0 }]">{{ rub(g.total) }}</span>
         </button>
         <div v-show="!collapsed.has(g.id)" class="card list"
           v-sortable="{ onMove: (from, to) => reorder('accounts', g.items, from, to), disabled: !admin }">

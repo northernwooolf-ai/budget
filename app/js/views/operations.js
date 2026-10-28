@@ -1,6 +1,6 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
 import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js';
-import { money, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js';
 import { ACCOUNT_TYPES, typeOf } from '../account-types.js';
 import { categoryTree, groupLabel } from '../categories.js';
 import { Icon, Modal, MonthSwitcher } from '../components.js';
@@ -61,7 +61,7 @@ export const OperationsView = {
     const listView = ref(localGet('ops-view', 'table'));
     watch(listView, (v) => localSet('ops-view', v));
 
-    return { state, importing, totals, groups, view, listView, money, dayLabel };
+    return { state, importing, totals, groups, view, listView, money, rub, dayLabel };
   },
   template: `
     <section class="page">
@@ -73,10 +73,10 @@ export const OperationsView = {
       <import-view v-if="importing" @close="importing = false"/>
 
       <div class="summary">
-        <div class="stat"><span class="stat-label">Доходы</span><span class="stat-value income">{{ money(totals.income) }}</span></div>
-        <div class="stat"><span class="stat-label">Расходы</span><span class="stat-value">{{ money(totals.expense) }}</span></div>
+        <div class="stat"><span class="stat-label">Доходы</span><span class="stat-value income">{{ rub(totals.income) }}</span></div>
+        <div class="stat"><span class="stat-label">Расходы</span><span class="stat-value">{{ rub(totals.expense) }}</span></div>
         <div class="stat"><span class="stat-label">Итог месяца</span>
-          <span :class="['stat-value', totals.diff < 0 ? 'negative' : 'income']">{{ totals.diff > 0 ? '+' : '' }}{{ money(totals.diff) }}</span></div>
+          <span :class="['stat-value', totals.diff < 0 ? 'negative' : 'income']">{{ Math.round(totals.diff) > 0 ? '+' : '' }}{{ rub(totals.diff) }}</span></div>
       </div>
 
       <div class="view-bar">
@@ -99,7 +99,7 @@ export const OperationsView = {
       <div v-for="g in groups" :key="g.date" class="day">
         <div class="day-head">
           <span>{{ dayLabel(g.date) }}</span>
-          <span v-if="g.expense" class="muted">−{{ money(g.expense) }}</span>
+          <span v-if="g.expense" class="muted">−{{ rub(g.expense) }}</span>
         </div>
         <div v-if="listView === 'table'" class="card list">
           <button v-for="t in g.items" :key="t.id" :class="['tx3', t.kind]" @click="$emit('edit', t)">

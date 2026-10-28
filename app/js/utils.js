@@ -7,6 +7,9 @@ export function money(v) {
   return (Number.isInteger(n) ? rubles : kopecks).format(n).replace('-', '−');
 }
 
+// Итоги на дашбордах — в целых рублях, без копеек: так чище.
+export const rub = (v) => money(Math.round(Number(v) || 0));
+
 // «1 234,50» → 1234.5; NaN, если ввели не число.
 export function parseAmount(s) {
   const n = Number(String(s ?? '').replace(/[\s ]/g, '').replace(',', '.'));
