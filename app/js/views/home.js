@@ -432,11 +432,15 @@ export const HomeView = {
           ⚠ Не учтено: +{{ money(totals.other) }} на кредитных картах и кредитах — похоже, там записан лимит,
           а не долг. Поправьте остаток через «Изменить» в карточке счёта.
         </p>
-        <div class="month-line">
-          <span class="month-name">{{ monthLabel(state.month) }}</span>
-          <span class="pill income">+{{ money(month.income) }}</span>
-          <span class="pill">−{{ money(month.expense) }}</span>
-          <span :class="['pill', month.diff < 0 ? 'negative' : 'income']">= {{ month.diff > 0 ? '+' : '' }}{{ money(month.diff) }}</span>
+        <!-- Как в таблице: месяц плашкой, ниже расходы — итог — доходы (в целых рублях, чтобы влезало). -->
+        <div class="month-sum">
+          <div class="month-sum-head">{{ monthLabel(state.month) }}</div>
+          <div class="month-sum-row">
+            <div><small>Расходы</small><b class="negative">−{{ money(Math.round(month.expense)) }}</b></div>
+            <div><small>Итог</small>
+              <b :class="month.diff < 0 ? 'negative' : 'income'">{{ Math.round(month.diff) > 0 ? '+' : '' }}{{ money(Math.round(month.diff)) }}</b></div>
+            <div><small>Доходы</small><b class="income">+{{ money(Math.round(month.income)) }}</b></div>
+          </div>
         </div>
       </div>
 

@@ -750,8 +750,18 @@ fieldset.plain:disabled { opacity: .75; }
 .kv b { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .kv-total span { color: var(--text); font-weight: 600; }
 .kv-note { margin-top: 6px; font-size: .8rem; }
-.month-line { align-items: center; gap: 6px; }
-.month-line .month-name { color: var(--muted); margin-right: 2px; }
+.month-sum { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.month-sum-head {
+  padding: 6px 12px; border-radius: 10px; background: var(--surface-2);
+  text-align: center; font-weight: 600; font-size: .9rem; color: var(--text-2);
+}
+.month-sum-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.month-sum-row > div { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.month-sum-row small { font-size: .72rem; color: var(--muted); }
+.month-sum-row b {
+  white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700;
+  font-size: clamp(.8rem, 3.6vw, 1rem);
+}
 .pill {
   white-space: nowrap; padding: 2px 10px; border-radius: 999px; background: var(--surface-2);
   font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums;
