@@ -1,13 +1,13 @@
 // Кэшбэки: раз в месяц выбираете по картам («Супермаркеты 7%»), привязываете к своим категориям,
 // а приложение подсказывает, какой картой что выгоднее покупать.
 import { ref, computed, watch, nextTick } from 'vue';
-import { api } from '../api.js?v=2610290233';
-import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610290233';
-import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610290233';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290233';
-import { Icon, Modal } from '../components.js?v=2610290233';
-import { CardChip, AccountSelect } from '../cards.js?v=2610290233';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290233';
+import { api } from '../api.js?v=2610290240';
+import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610290240';
+import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610290240';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290240';
+import { Icon, Modal } from '../components.js?v=2610290240';
+import { CardChip, AccountSelect } from '../cards.js?v=2610290240';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290240';
 
 // Карты, по которым бывает кэшбэк: наличные и вклады не нужны.
 const cardAccounts = () => state.accounts
@@ -97,8 +97,31 @@ const CategoryChecklist = {
     </modal>`,
 };
 
+// Одна строка кэшбэка: название в банке, процент, привязанные категории.
+const CashbackRow = {
+  components: { Icon },
+  props: { row: Object, chips: Array },
+  emits: ['remove', 'pick', 'unpick'],
+  template: `
+    <div class="cb-row">
+      <div class="cb-row-top">
+        <input v-model="row.label" :data-cb-key="row._key" list="cb-labels" placeholder="Категория в банке" aria-label="Категория в банке">
+        <input v-model="row.percent" inputmode="decimal" class="cb-percent" placeholder="0" aria-label="Процент"><span>%</span>
+        <button type="button" class="icon-btn" aria-label="Удалить кэшбэк" @click="$emit('remove')"><icon name="trash" :size="18"/></button>
+      </div>
+      <div class="cb-cats">
+        <span v-for="ch in chips" :key="ch.key" class="chip small">
+          {{ ch.text }}
+          <button type="button" class="chip-x" aria-label="Убрать" @click="$emit('unpick', ch.ids)">×</button>
+        </span>
+        <span v-if="!row.category_ids.length" class="hint">на все покупки</span>
+        <button type="button" class="btn small" @click="$emit('pick')">+ категории</button>
+      </div>
+    </div>`,
+};
+
 const CashbackEditor = {
-  components: { Modal, Icon, CardChip, AccountSelect, CategoryChecklist },
+  components: { Modal, Icon, CardChip, AccountSelect, CategoryChecklist, CashbackRow },
   emits: ['close'],
   setup(props, { emit }) {
     const month = ref(parseIso(currentMonthIso()));
@@ -132,10 +155,12 @@ const CashbackEditor = {
       }));
     }
 
+    // Новая строка появляется над кнопкой «Добавить кэшбэк», у выбранной карты;
+    // в общий список по картам она уходит после сохранения.
     async function addRow() {
       error.value = '';
       if (!cardId.value) return (error.value = 'Выберите карту');
-      const row = withKey({ account_id: cardId.value, label: '', percent: '', category_ids: [] });
+      const row = withKey({ account_id: cardId.value, label: '', percent: '', category_ids: [], _new: true });
       rows.value.push(row);
       await nextTick();
       const input = document.querySelector(`[data-cb-key="${row._key}"]`);
@@ -175,14 +200,17 @@ const CashbackEditor = {
       .map((g) => ({ label: g.label, items: cards.value.filter((a) => typeOf(a).id === g.id) }))
       .filter((g) => g.items.length));
 
-    // Группы по картам; счета не из списка карт (например, ушедшие в архив) тоже показываем,
+    const isDraft = (r) => r._new && r.account_id === cardId.value;
+    const drafts = computed(() => rows.value.filter(isDraft));
+    const currentCard = computed(() => state.accounts.find((a) => a.id === cardId.value));
+
+    // Группы по картам в порядке карт; счета не из списка карт (например, ушедшие в архив) тоже показываем,
     // чтобы такие кэшбэки можно было увидеть и удалить.
-    // Выбранная карта — первой, чтобы новые строки появлялись сразу под кнопкой «Добавить».
     const byCard = computed(() => {
-      const ids = [...new Set([cardId.value, ...cards.value.map((a) => a.id), ...rows.value.map((r) => r.account_id)])];
+      const ids = [...new Set([...cards.value.map((a) => a.id), ...rows.value.map((r) => r.account_id)])];
       return ids.map((id) => ({
         account: state.accounts.find((a) => a.id === id) ?? { id, name: 'Удалённый счёт', icon: '❔' },
-        rows: rows.value.filter((r) => r.account_id === id),
+        rows: rows.value.filter((r) => r.account_id === id && !isDraft(r)),
       })).filter((g) => g.rows.length);
     });
 
@@ -200,7 +228,9 @@ const CashbackEditor = {
       busy.value = true;
       try {
         await saveCashbackMonth(out, removed.value);
-        emit('close');
+        // Окно остаётся открытым: новые строки уходят в список по картам.
+        rows.value = filled.map((r, i) => ({ ...r, id: out[i].id, label: out[i].label, _new: false }));
+        removed.value = [];
       } catch {
         // Часть уже сохранилась: запоминаем полученные номера, чтобы не создать их повторно.
         out.forEach((o, i) => { if (o.id) filled[i].id = o.id; });
@@ -208,7 +238,7 @@ const CashbackEditor = {
     }
 
     return {
-      month, rows, loading, busy, error, cards, tree, cardId, byCard, LABELS,
+      month, rows, loading, busy, error, cards, tree, cardId, byCard, drafts, currentCard, LABELS,
       shift: (n) => { month.value = addMonths(month.value, n); },
       copyPrevious, addRow, removeRow, chipsOf, unpick, pickingFor, cardGroups, save, monthLabel, groupLabel, categoryLabel,
     };
@@ -224,42 +254,32 @@ const CashbackEditor = {
         <p class="hint">Впишите категории кэшбэка, которые выбрали в банках, и привяжите их к своим категориям —
           тогда при вводе траты приложение подскажет, какой картой выгоднее. Без привязки кэшбэк считается «на все покупки».</p>
 
-        <div class="cb-add">
+        <!-- Карта, под ней новые (ещё не сохранённые) строки, под ними кнопка — она съезжает вниз с каждой строкой. -->
+        <div class="cb-new stack">
           <account-select v-model="cardId" :groups="cardGroups" label="Карта"/>
-          <button type="button" class="btn" @click="addRow"><icon name="plus"/> Добавить кэшбэк</button>
+          <cashback-row v-for="r in drafts" :key="r._key" :row="r" :chips="chipsOf(r)"
+            @remove="removeRow(r)" @pick="pickingFor = r" @unpick="(ids) => unpick(r, ids)"/>
+          <button type="button" class="btn" @click="addRow"><icon name="plus"/> Добавить кэшбэк{{ currentCard ? ' на «' + currentCard.name + '»' : '' }}</button>
           <datalist id="cb-labels"><option v-for="l in LABELS" :key="l" :value="l"></option></datalist>
         </div>
 
         <p v-if="loading" class="empty">Загрузка…</p>
-        <div v-else-if="!rows.length" class="empty">
+        <div v-else-if="!byCard.length && !drafts.length" class="empty">
           <p>На этот месяц кэшбэки не выбраны.</p>
           <button class="btn" @click="copyPrevious">Скопировать с прошлого месяца</button>
         </div>
 
-        <div v-for="g in byCard" :key="g.account.id" :class="['cb-card', { current: g.account.id === cardId }]">
+        <div v-for="g in byCard" :key="g.account.id" class="cb-card">
           <div class="field-label cb-card-head"><card-chip :account="g.account" size="sm"/> {{ g.account.name }}</div>
-          <div v-for="r in g.rows" :key="r._key" class="cb-row">
-            <div class="cb-row-top">
-              <input v-model="r.label" :data-cb-key="r._key" list="cb-labels" placeholder="Категория в банке" aria-label="Категория в банке">
-              <input v-model="r.percent" inputmode="decimal" class="cb-percent" placeholder="0" aria-label="Процент"><span>%</span>
-              <button type="button" class="icon-btn" aria-label="Удалить кэшбэк" @click="removeRow(r)"><icon name="trash" :size="18"/></button>
-            </div>
-            <div class="cb-cats">
-              <span v-for="ch in chipsOf(r)" :key="ch.key" class="chip small">
-                {{ ch.text }}
-                <button type="button" class="chip-x" aria-label="Убрать" @click="unpick(r, ch.ids)">×</button>
-              </span>
-              <span v-if="!r.category_ids.length" class="hint">на все покупки</span>
-              <button type="button" class="btn small" @click="pickingFor = r">+ категории</button>
-            </div>
-          </div>
+          <cashback-row v-for="r in g.rows" :key="r._key" :row="r" :chips="chipsOf(r)"
+            @remove="removeRow(r)" @pick="pickingFor = r" @unpick="(ids) => unpick(r, ids)"/>
         </div>
         <category-checklist v-if="pickingFor" :tree="tree" v-model="pickingFor.category_ids" @close="pickingFor = null"/>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       </div>
       <template #footer>
         <span class="spacer"></span>
-        <button type="button" class="btn ghost" @click="$emit('close')">Отмена</button>
+        <button type="button" class="btn ghost" @click="$emit('close')">Закрыть</button>
         <button type="button" class="btn primary" :disabled="busy || loading" @click="save">Сохранить кэшбэк</button>
       </template>
     </modal>`,
