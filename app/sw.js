@@ -28,7 +28,11 @@ async function networkFirst(req) {
   try {
     // no-cache: всегда сверяться с сервером, чтобы после обновления не смешались старые и новые файлы.
     const res = await fetch(req, { cache: 'no-cache' });
-    if (res.ok) cache.put(req, res.clone());
+    if (res.ok) {
+      // У файлов есть версия в адресе (?v=…): старые версии того же файла убираем.
+      await cache.delete(req, { ignoreSearch: true });
+      await cache.put(req, res.clone());
+    }
     return res;
   } catch (err) {
     const hit = await cache.match(req, { ignoreSearch: true });

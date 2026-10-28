@@ -1,12 +1,12 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js';
-import { categoryTree, groupLabel } from '../categories.js';
-import { Icon, Modal, MonthSwitcher } from '../components.js';
-import { ImportView } from './import.js';
-import { cashbackHint } from './cashback.js';
-import { CardChip, AccountSelect } from '../cards.js';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290206';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290206';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290206';
+import { categoryTree, groupLabel } from '../categories.js?v=2610290206';
+import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290206';
+import { ImportView } from './import.js?v=2610290206';
+import { cashbackHint } from './cashback.js?v=2610290206';
+import { CardChip, AccountSelect } from '../cards.js?v=2610290206';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -79,14 +79,14 @@ export const OperationsView = {
           <span :class="['stat-value', totals.diff < 0 ? 'negative' : 'income']">{{ Math.trunc(totals.diff) > 0 ? '+' : '' }}{{ rub(totals.diff) }}</span></div>
       </div>
 
+      <!-- Переключатель по центру и не двигается; под ним в виде «как в таблице» — плашка с колонками. -->
       <div class="view-bar">
-        <span v-if="listView === 'table'" class="view-legend">
-          <span class="negative">← расходы</span><span>переводы</span><span class="income">доходы →</span>
-        </span>
-        <span v-else></span>
         <div class="segmented mini" role="radiogroup" aria-label="Вид списка">
           <button :class="{ active: listView === 'table' }" @click="listView = 'table'">Как в таблице</button>
           <button :class="{ active: listView === 'list' }" @click="listView = 'list'">Обычный</button>
+        </div>
+        <div v-if="listView === 'table'" class="plate view-legend">
+          <span class="negative">← расходы</span><span>переводы</span><span class="income">доходы →</span>
         </div>
       </div>
 

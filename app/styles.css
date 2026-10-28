@@ -574,11 +574,11 @@ fieldset.plain:disabled { opacity: .75; }
   box-sizing: content-box;
 }
 .cb-pay:hover, .cb-pay:active { background: var(--surface-2); }
-.cb-pay .cb-account { display: inline-flex; align-items: center; gap: 6px; }
+.cb-pay .cb-label { overflow-wrap: normal; min-width: 0; line-height: 1.25; }
+.cb-pay .cb-account { display: inline-flex; align-items: center; gap: 6px; max-width: 42vw; min-width: 0; }
+.cb-pay .cb-account .acc-name-cut { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pay-sheet { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 8px 0; }
-.pay-card-name { font-size: 1.05rem; }
-.pay-btn { width: 100%; justify-content: center; text-decoration: none; }
-.cb-label { font-weight: 600; overflow-wrap: anywhere; }
+.pay-card-name { font-size: 1.05rem; }.cb-label { font-weight: 600; overflow-wrap: anywhere; }
 .cb-account { color: var(--text-2); font-size: .88rem; text-align: right; }
 .cb-pct { color: var(--primary); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
 .cb-add { display: grid; grid-template-columns: 1fr 1fr 70px auto; gap: 8px; }
@@ -679,8 +679,12 @@ fieldset.plain:disabled { opacity: .75; }
 .slider input { width: 100%; accent-color: var(--primary); }
 
 /* ---------- Операции «как в таблице»: расход слева, перевод посередине, доход справа ---------- */
-.view-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.view-legend { display: flex; gap: 12px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.view-bar { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* Подписи стоят над своими колонками таблицы: расходы слева, переводы посередине, доходы справа. */
+.plate.view-legend { display: grid; grid-template-columns: 1fr 1fr 1fr; font-size: .8rem; }
+.view-legend span:first-child { text-align: left; }
+.view-legend span:nth-child(2) { text-align: center; color: var(--muted); }
+.view-legend span:last-child { text-align: right; }
 .tx3 {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px; align-items: center;
   width: 100%; min-height: 58px; padding: 10px 12px; border: 0; background: none; text-align: left;

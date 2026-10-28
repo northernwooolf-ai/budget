@@ -1,8 +1,8 @@
 // Мелкие общие элементы интерфейса.
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import Sortable from 'sortablejs';
-import { state, shiftMonth } from './store.js';
-import { monthLabel } from './utils.js';
+import { state, shiftMonth } from './store.js?v=2610290206';
+import { monthLabel } from './utils.js?v=2610290206';
 
 const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',

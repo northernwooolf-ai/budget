@@ -1,7 +1,7 @@
 // Оформление: тема, цветовая схема, акцентный цвет и фоновая картинка.
 // Хранится на каждом устройстве отдельно (localStorage), в базу не попадает.
 import { reactive, watch } from 'vue';
-import { localGet, localSet } from './utils.js';
+import { localGet, localSet } from './utils.js?v=2610290206';
 
 const KEY = 'appearance';
 const BG_KEY = 'appearance-bg';
