@@ -418,9 +418,9 @@ export const HomeView = {
         </div>
         <span :class="['hero', { negative: totals.hero < 0 }]">{{ rub(totals.hero) }}</span>
         <span class="hint">Наличные и дебетовые карты{{ withDebts ? ' минус кредиты и долги' : '' }}</span>
-        <!-- Расшифровка свёрнута при каждом открытии; ⚠ на кнопке, если есть неучтённое. -->
-        <button type="button" class="details-toggle" :aria-expanded="details" @click="details = !details">
-          <span>{{ totals.other > 0 ? '⚠ ' : '' }}Подробнее</span>
+        <!-- Расшифровка свёрнута при каждом открытии. -->
+        <button type="button" class="plate details-toggle" :aria-expanded="details" @click="details = !details">
+          <span>Подробнее</span>
           <icon name="down" :class="['chev', { closed: !details }]" :size="16"/>
         </button>
         <div v-if="details" class="kv-list">
@@ -440,7 +440,7 @@ export const HomeView = {
         </p>
         <!-- Как в таблице: месяц плашкой, ниже расходы — итог — доходы (в целых рублях, чтобы влезало). -->
         <div class="month-sum">
-          <div class="month-sum-head">{{ monthLabel(state.month) }}</div>
+          <div class="plate">{{ monthLabel(state.month) }}</div>
           <div class="month-sum-row">
             <div><small>Расходы</small><b class="negative">−{{ rub(month.expense) }}</b></div>
             <div><small>Итог</small>

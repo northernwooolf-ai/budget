@@ -568,7 +568,16 @@ fieldset.plain:disabled { opacity: .75; }
 
 /* ---------- Кэшбэки ---------- */
 .cb-best { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.cb-best li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; }
+.cb-pay {
+  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center;
+  padding: 4px 6px; margin: 0 -6px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left;
+  box-sizing: content-box;
+}
+.cb-pay:hover, .cb-pay:active { background: var(--surface-2); }
+.cb-pay .cb-account { display: inline-flex; align-items: center; gap: 6px; }
+.pay-sheet { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 8px 0; }
+.pay-card-name { font-size: 1.05rem; }
+.pay-btn { width: 100%; justify-content: center; text-decoration: none; }
 .cb-label { font-weight: 600; overflow-wrap: anywhere; }
 .cb-account { color: var(--text-2); font-size: .88rem; text-align: right; }
 .cb-pct { color: var(--primary); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
@@ -750,17 +759,16 @@ fieldset.plain:disabled { opacity: .75; }
 .kv b { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .kv-total span { color: var(--text); font-weight: 600; }
 .kv-note { margin-top: 6px; font-size: .8rem; }
-.details-toggle {
-  margin-top: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+/* Плашка на всю ширину с надписью посередине («Октябрь 2026», «Подробнее»). */
+.plate {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
   padding: 6px 12px; border: 0; border-radius: 10px; background: var(--surface-2);
-  color: var(--text-2); font: inherit; font-weight: 600; font-size: .9rem;
+  color: var(--text-2); font: inherit; font-weight: 600; font-size: .9rem; line-height: 1.4;
 }
+button.plate { -webkit-appearance: none; appearance: none; }
+.details-toggle { margin-top: 12px; }
 .details-toggle + .kv-list { margin-top: 4px; }
 .month-sum { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-.month-sum-head {
-  padding: 6px 12px; border-radius: 10px; background: var(--surface-2);
-  text-align: center; font-weight: 600; font-size: .9rem; color: var(--text-2);
-}
 .month-sum-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .month-sum-row > div { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
 .month-sum-row small { font-size: .72rem; color: var(--muted); }

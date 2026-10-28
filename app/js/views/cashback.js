@@ -260,11 +260,39 @@ const CashbackEditor = {
     </modal>`,
 };
 
+// Mir Pay открываем по имени пакета на Android; если его нет — страница в RuStore.
+// Выбрать карту заранее нельзя: у Mir Pay нет такой открытой ссылки, поэтому показываем, какую карту пролистать.
+const MIR_PAY_URL = 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;'
+  + 'package=ru.nspk.mirpay;S.browser_fallback_url=' + encodeURIComponent('https://www.rustore.ru/catalog/app/ru.nspk.mirpay') + ';end';
+const isAndroid = /android/i.test(navigator.userAgent);
+
+// Окно «Оплатить»: какая карта и кнопка открыть Mir Pay.
+const PaySheet = {
+  components: { Modal, CardChip },
+  props: { cashback: Object },
+  emits: ['close'],
+  setup(props) {
+    const account = computed(() => state.accounts.find((a) => a.id === props.cashback.account_id));
+    return { account, formatPercent, isAndroid, MIR_PAY_URL };
+  },
+  template: `
+    <modal :title="cashback.label + ' — ' + formatPercent(cashback.percent)" @close="$emit('close')">
+      <div class="pay-sheet">
+        <card-chip v-if="account" :account="account" size="xl"/>
+        <b class="pay-card-name">{{ account?.name ?? 'Удалённый счёт' }}<template v-if="account?.card_last4"> •• {{ account.card_last4 }}</template></b>
+        <p class="hint">Платите этой картой. В Mir Pay пролистайте до неё и приложите телефон к терминалу.</p>
+        <a v-if="isAndroid" class="btn primary pay-btn" :href="MIR_PAY_URL">Открыть Mir Pay</a>
+        <p v-else class="hint">Кнопка «Открыть Mir Pay» появляется на телефоне с Android.</p>
+      </div>
+    </modal>`,
+};
+
 // Карточка на главной: какой картой что покупать в этом месяце.
 export const CashbackCard = {
-  components: { Icon, CashbackEditor },
+  components: { Icon, CashbackEditor, PaySheet, CardChip },
   setup() {
     const editing = ref(false);
+    const paying = ref(null);
     // Для каждой категории кэшбэка («Супермаркеты») — лучшая карта.
     const best = computed(() => {
       const map = new Map();
@@ -277,7 +305,8 @@ export const CashbackCard = {
       return [...map.values()].sort((a, b) => Number(b.percent) - Number(a.percent));
     });
     const IN_MONTH = ['январе', 'феврале', 'марте', 'апреле', 'мае', 'июне', 'июле', 'августе', 'сентябре', 'октябре', 'ноябре', 'декабре'];
-    return { state, editing, best, accountName, formatPercent, inMonth: IN_MONTH[new Date().getMonth()] };
+    const accountOf = (id) => state.accounts.find((a) => a.id === id);
+    return { state, editing, paying, best, accountName, accountOf, formatPercent, inMonth: IN_MONTH[new Date().getMonth()] };
   },
   template: `
     <div class="card pad cashback-card">
@@ -288,11 +317,14 @@ export const CashbackCard = {
       <p v-if="!best.length" class="hint">Отметьте, какие кэшбэки вы выбрали в банках в этом месяце, — здесь будет видно, какой картой что выгоднее покупать.</p>
       <ul v-else class="cb-best">
         <li v-for="c in best" :key="c.id">
-          <span class="cb-label">{{ c.label }}</span>
-          <span class="cb-account">{{ accountName(c.account_id) }}</span>
-          <b class="cb-pct">{{ formatPercent(c.percent) }}</b>
+          <button type="button" class="cb-pay" @click="paying = c">
+            <span class="cb-label">{{ c.label }}</span>
+            <span class="cb-account"><card-chip v-if="accountOf(c.account_id)" :account="accountOf(c.account_id)" size="sm"/>{{ accountName(c.account_id) }}</span>
+            <b class="cb-pct">{{ formatPercent(c.percent) }}</b>
+          </button>
         </li>
       </ul>
       <cashback-editor v-if="editing" @close="editing = false"/>
+      <pay-sheet v-if="paying" :cashback="paying" @close="paying = null"/>
     </div>`,
 };
