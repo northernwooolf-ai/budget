@@ -699,7 +699,8 @@ fieldset.plain:disabled { opacity: .75; }
 .tx3-cat { font-size: .9rem; font-weight: 500; overflow-wrap: anywhere; line-height: 1.25; }
 .tx3-acc { font-size: .8rem; color: var(--text-2); line-height: 1.25; overflow-wrap: anywhere; min-width: 0; }
 .tx3-arrow { letter-spacing: .02em; }
-.tx3.transfer .tx3-amount { color: var(--text); }
+/* Класс вида tx3-income, а не просто income: общий .income красил бы зелёным всю строку. */
+.tx3.tx3-transfer .tx3-amount { color: var(--text); }
 
 /* ---------- Мини-карточки банковских карт ---------- */
 .card-chip {
@@ -729,8 +730,9 @@ fieldset.plain:disabled { opacity: .75; }
 .acc-emoji.md { width: 56px; height: 36px; font-size: 1.3rem; }
 .acc-emoji.lg { width: 84px; height: 53px; border-radius: 8px; font-size: 1.9rem; }
 .acc-emoji.xl { width: 220px; height: 139px; border-radius: 14px; font-size: 4rem; }
-.tx3-acc { display: inline-flex; align-items: center; gap: 6px; }
-.tx3 .z-right.tx3-acc { flex-direction: row-reverse; text-align: right; }
+/* Карта над названием: так названию счёта достаётся вся ширина колонки и слова не рвутся. */
+.tx3-acc { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; overflow-wrap: break-word; }
+.tx3 .z-right.tx3-acc { align-items: flex-end; text-align: right; }
 .acc-name { min-width: 0; }
 .card-designer { gap: 10px; }
 .card-preview { display: flex; justify-content: center; padding: 6px 0; }

@@ -1,12 +1,12 @@
 // Загрузка скриншотов из банка: GigaChat находит операции, вы проверяете и добавляете.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610290206';
-import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610290206';
-import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610290206';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290206';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290206';
-import { Icon, Modal } from '../components.js?v=2610290206';
-import { bankKey } from '../cards.js?v=2610290206';
+import { api } from '../api.js?v=2610290209';
+import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610290209';
+import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610290209';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290209';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290209';
+import { Icon, Modal } from '../components.js?v=2610290209';
+import { bankKey } from '../cards.js?v=2610290209';
 
 // ---------- Память: какой магазин в какую категорию, какой банк на какой счёт ----------
 

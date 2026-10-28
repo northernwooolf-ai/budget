@@ -1,12 +1,12 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290206';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290206';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290206';
-import { categoryTree, groupLabel } from '../categories.js?v=2610290206';
-import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290206';
-import { ImportView } from './import.js?v=2610290206';
-import { cashbackHint } from './cashback.js?v=2610290206';
-import { CardChip, AccountSelect } from '../cards.js?v=2610290206';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290209';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290209';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290209';
+import { categoryTree, groupLabel } from '../categories.js?v=2610290209';
+import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290209';
+import { ImportView } from './import.js?v=2610290209';
+import { cashbackHint } from './cashback.js?v=2610290209';
+import { CardChip, AccountSelect } from '../cards.js?v=2610290209';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -102,7 +102,7 @@ export const OperationsView = {
           <span v-if="g.expense" class="muted">−{{ rub(g.expense) }}</span>
         </div>
         <div v-if="listView === 'table'" class="card list">
-          <button v-for="t in g.items" :key="t.id" :class="['tx3', t.kind]" @click="$emit('edit', t)">
+          <button v-for="t in g.items" :key="t.id" :class="['tx3', 'tx3-' + t.kind]" @click="$emit('edit', t)">
             <template v-if="t.kind === 'expense'">
               <span class="z-left tx3-amount negative">−{{ money(t.amount) }}</span>
               <span class="z-mid"><span class="tx3-cat">{{ view(t).icon }} {{ view(t).title }}</span><small v-if="t.note">{{ t.note }}</small></span>
