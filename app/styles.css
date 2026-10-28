@@ -831,10 +831,11 @@ button.plate { -webkit-appearance: none; appearance: none; }
 .fab.hidden { transform: translateY(140%); opacity: 0; pointer-events: none; }
 .fab.open svg { transform: rotate(45deg); }
 .fab svg { transition: transform .15s; }
-/* Плашки «Скриншот» и «Операция» столбиком над раскрытым «+», одной ширины. */
+/* Плашки «Скриншот» и «Операция» столбиком слева от раскрытого «+», одной ширины,
+   по центру высоты кнопки (две плашки по 40px + 8px выше «+» на 28px, отсюда сдвиг на 14px). */
 .fab-backdrop { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .25); }
 .fab-menu {
-  position: fixed; z-index: 21; right: 18px; bottom: calc(var(--nav-h) + 90px + env(safe-area-inset-bottom));
+  position: fixed; z-index: 21; right: 88px; bottom: calc(var(--nav-h) + 4px + env(safe-area-inset-bottom));
   display: grid; gap: 8px;
 }
 .fab-pill {

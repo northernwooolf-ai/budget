@@ -1,16 +1,16 @@
 import { createApp, ref, onMounted, onBeforeUnmount } from 'vue';
-import { state, init } from './store.js?v=2610290226';
-import { localGet, localSet } from './utils.js?v=2610290226';
-import { Icon } from './components.js?v=2610290226';
-import { appearance } from './appearance.js?v=2610290226';
-import { lock } from './lock.js?v=2610290226';
-import { LockScreen } from './views/lock-screen.js?v=2610290226';
-import { AuthView, OnboardingView } from './views/auth.js?v=2610290226';
-import { OperationsView, TxEditor } from './views/operations.js?v=2610290226';
-import { HomeView } from './views/home.js?v=2610290226';
-import { ReportsView } from './views/reports.js?v=2610290226';
-import { SettingsView } from './views/settings.js?v=2610290226';
-import { ImportView } from './views/import.js?v=2610290226';
+import { state, init } from './store.js?v=2610290228';
+import { localGet, localSet } from './utils.js?v=2610290228';
+import { Icon } from './components.js?v=2610290228';
+import { appearance } from './appearance.js?v=2610290228';
+import { lock } from './lock.js?v=2610290228';
+import { LockScreen } from './views/lock-screen.js?v=2610290228';
+import { AuthView, OnboardingView } from './views/auth.js?v=2610290228';
+import { OperationsView, TxEditor } from './views/operations.js?v=2610290228';
+import { HomeView } from './views/home.js?v=2610290228';
+import { ReportsView } from './views/reports.js?v=2610290228';
+import { SettingsView } from './views/settings.js?v=2610290228';
+import { ImportView } from './views/import.js?v=2610290228';
 
 const TABS = [
   { id: 'home', label: 'Главная', icon: 'home' },

@@ -1,6 +1,6 @@
 import { ref } from 'vue';
-import { appearance, SCHEMES, ACCENTS, setBackground, clearBackground, resetAppearance } from '../appearance.js?v=2610290226';
-import { toast } from '../store.js?v=2610290226';
+import { appearance, SCHEMES, ACCENTS, setBackground, clearBackground, resetAppearance } from '../appearance.js?v=2610290228';
+import { toast } from '../store.js?v=2610290228';
 
 export const AppearanceSettings = {
   setup() {
