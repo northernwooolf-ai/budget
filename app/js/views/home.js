@@ -9,6 +9,7 @@ import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js';
 import { Icon, Modal, EmojiPicker, ConfirmButton, vSortable } from '../components.js';
 import { useLookups } from './operations.js';
 import { CashbackCard } from './cashback.js';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -19,7 +20,7 @@ function creditInfo(a) {
 }
 
 const AccountRow = {
-  components: { Icon, ConfirmButton },
+  components: { Icon, ConfirmButton, CardChip },
   props: { account: Object, archived: Boolean },
   emits: ['open'],
   setup(props) {
@@ -35,7 +36,7 @@ const AccountRow = {
     <div :class="['row', 's-item', { muted: archived }]">
       <span v-if="admin && !archived" class="drag-handle" title="Перетащите, чтобы поменять порядок"><icon name="grip"/></span>
       <button class="row-main" @click="$emit('open', account)">
-        <span class="tx-icon" aria-hidden="true">{{ account.icon }}</span>
+        <card-chip :account="account" size="md"/>
         <span class="tx-main">
           <span class="tx-title">{{ account.name }}</span>
           <span class="tx-sub">{{ sub }}</span>
@@ -52,7 +53,7 @@ const AccountRow = {
 };
 
 const AccountEditor = {
-  components: { Modal, EmojiPicker },
+  components: { Modal, EmojiPicker, CardChip },
   props: { account: Object },
   emits: ['close'],
   setup(props, { emit }) {
@@ -69,9 +70,22 @@ const AccountEditor = {
       credit_limit: amountToInput(a.credit_limit),
       archived: a.archived ?? false,
       sort: a.sort ?? state.accounts.length + 1,
+      card_style: a.card_style ?? null,
+      card_last4: a.card_last4 ?? '',
+      card_image: a.card_image ?? null,
     });
     const busy = ref(false);
     const error = ref('');
+    // Вид карты: пока стиль не выбран вручную, он подбирается по банку из названия.
+    const preview = computed(() => ({ ...form, card_style: form.card_style ?? defaultStyle(form) }));
+    const showCard = computed(() => isCardType(form));
+    const imageInput = ref(null);
+    async function onCardImage(e) {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file) return;
+      try { form.card_image = await cardImageFromFile(file); } catch { error.value = 'Не удалось прочитать картинку'; }
+    }
     const balanceLabel = computed(() => ({
       credit: 'Долг по карте на начало учёта, ₽',
       borrowed: 'Сколько осталось выплатить на начало учёта, ₽',
@@ -94,6 +108,8 @@ const AccountEditor = {
       if (!form.name.trim()) return (error.value = 'Введите название');
       if (Number.isNaN(value)) return (error.value = 'Сумма на начало учёта должна быть числом');
       if (limit !== null && !(limit > 0)) return (error.value = 'Кредитный лимит должен быть больше нуля или пустым');
+      const last4 = String(form.card_last4 ?? '').trim();
+      if (last4 && !/^\d{4}$/.test(last4)) return (error.value = 'Последние цифры карты — ровно 4 цифры');
       busy.value = true;
       try {
         await saveAccount({
@@ -101,6 +117,7 @@ const AccountEditor = {
           name: form.name.trim(),
           initial_balance: isDebt(form.type) ? -value : value,
           credit_limit: form.type === 'credit' ? limit : null,
+          card_last4: last4 || null,
         });
         emit('close');
       } catch { /* показано */ } finally { busy.value = false; }
@@ -114,7 +131,10 @@ const AccountEditor = {
       } catch { /* показано */ } finally { busy.value = false; }
     }
 
-    return { form, busy, error, balanceLabel, save, toggleArchive, ACCOUNT_TYPES };
+    return {
+      form, busy, error, balanceLabel, save, toggleArchive, ACCOUNT_TYPES,
+      preview, showCard, imageInput, onCardImage, CARD_STYLES,
+    };
   },
   template: `
     <modal :title="form.id ? 'Счёт' : 'Новый счёт'" @close="$emit('close')">
@@ -130,7 +150,27 @@ const AccountEditor = {
         </div>
         <label class="field"><span>Название</span>
           <input v-model="form.name" maxlength="40" required placeholder="Например, Сбербанк зарплатная"></label>
-        <div><div class="field-label">Значок</div><emoji-picker v-model="form.icon"/></div>
+        <div v-if="showCard" class="stack card-designer">
+          <div class="field-label">Вид карты</div>
+          <div class="card-preview"><card-chip :account="preview" size="xl"/></div>
+          <div class="style-grid" role="radiogroup" aria-label="Цвета карты">
+            <button v-for="(s, id) in CARD_STYLES" :key="id" type="button" role="radio" :title="s.label" :aria-label="s.label"
+              :aria-checked="preview.card_style === id && !form.card_image"
+              :class="['style-opt', { selected: preview.card_style === id && !form.card_image }]"
+              :style="{ background: s.bg }" @click="form.card_style = id; form.card_image = null"></button>
+          </div>
+          <input ref="imageInput" type="file" accept="image/*" hidden @change="onCardImage">
+          <div class="btn-row">
+            <button type="button" class="btn small" @click="imageInput.click()">{{ form.card_image ? 'Заменить картинку' : 'Своя картинка карты' }}</button>
+            <button v-if="form.card_image" type="button" class="btn ghost small" @click="form.card_image = null">Убрать картинку</button>
+          </div>
+          <small class="hint">Картинку можно взять со скриншота карты из банковского приложения или Mir Pay — приложение обрежет её под форму карты.</small>
+          <label class="field">
+            <span>Последние 4 цифры карты</span>
+            <input v-model="form.card_last4" inputmode="numeric" maxlength="4" placeholder="Например, 3244">
+          </label>
+        </div>
+        <div v-else><div class="field-label">Значок</div><emoji-picker v-model="form.icon"/></div>
         <label class="field">
           <span>{{ balanceLabel }}</span>
           <input v-model="form.initial_balance" inputmode="decimal">
@@ -213,7 +253,7 @@ const StartBalances = {
 
 // Выписка: все движения по счёту и остаток после каждого.
 const AccountStatement = {
-  components: { Modal, Icon },
+  components: { Modal, Icon, CardChip },
   props: { account: Object },
   emits: ['close', 'edit', 'edit-account'],
   setup(props) {
@@ -256,7 +296,8 @@ const AccountStatement = {
   template: `
     <modal :title="account.icon + ' ' + account.name" @close="$emit('close')">
       <div class="statement-head">
-        <div>
+        <card-chip :account="account" size="lg"/>
+        <div class="grow">
           <div class="stat-label">Остаток сейчас</div>
           <div :class="['hero', { negative: balance < 0 }]">{{ money(balance) }}</div>
           <div v-if="creditInfo(account)" class="hint">{{ creditInfo(account) }}</div>

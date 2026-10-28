@@ -6,6 +6,7 @@ import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, 
 import { ACCOUNT_TYPES, typeOf } from '../account-types.js';
 import { categoryTree, groupLabel, categoryLabel } from '../categories.js';
 import { Icon, Modal } from '../components.js';
+import { bankKey } from '../cards.js';
 
 // ---------- Память: какой магазин в какую категорию, какой банк на какой счёт ----------
 
@@ -25,20 +26,6 @@ function rememberMerchants(rows) {
   localSet(MERCHANTS_KEY, JSON.stringify(memory));
 }
 
-// Названия банков, как их может написать GigaChat и как вы могли назвать счёт.
-const BANKS = {
-  sber: ['сбер'],
-  tbank: ['т-банк', 'т банк', 'тбанк', 'тинькофф', 'tinkoff', 'tbank'],
-  otp: ['отп', 'otp'],
-  ozon: ['озон', 'ozon'],
-  mkb: ['мкб', 'московский кредитный'],
-  wb: ['wildberries', 'вайлдберриз', 'вб банк', 'вб дк', 'вб кошел', 'wb банк', 'wb bank'],
-  alfa: ['альфа', 'alfa'],
-};
-const bankKey = (text) => {
-  const t = String(text ?? '').toLowerCase();
-  return Object.keys(BANKS).find((k) => BANKS[k].some((alias) => t.includes(alias))) ?? null;
-};
 
 // Карта этого банка; если в банке несколько карт — карта того, чья операция
 // (по началу имени: «Антон» → «…Анто», «Свето» → «…Свето»), и дебетовая раньше вкладов.

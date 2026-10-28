@@ -1,6 +1,7 @@
 // Общее для обеих реализаций хранилища (Supabase и демо).
 
-export const ACCOUNT_FIELDS = ['name', 'icon', 'type', 'initial_balance', 'credit_limit', 'archived', 'sort'];
+export const ACCOUNT_FIELDS = ['name', 'icon', 'type', 'initial_balance', 'credit_limit', 'archived', 'sort',
+  'card_style', 'card_last4', 'card_image'];
 export const CATEGORY_FIELDS = ['name', 'kind', 'group_id', 'icon', 'monthly_limit', 'archived', 'sort'];
 export const GROUP_FIELDS = ['name', 'kind', 'monthly_limit', 'sort'];
 export const CASHBACK_FIELDS = ['month', 'account_id', 'label', 'percent', 'category_ids'];

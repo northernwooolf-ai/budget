@@ -6,6 +6,7 @@ import { categoryTree, groupLabel } from '../categories.js';
 import { Icon, Modal, MonthSwitcher } from '../components.js';
 import { ImportView } from './import.js';
 import { cashbackHint } from './cashback.js';
+import { CardChip } from '../cards.js';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -19,7 +20,7 @@ export function useLookups() {
 export const ownerOf = (t) => t.spent_by ?? t.created_by;
 
 export const OperationsView = {
-  components: { Icon, MonthSwitcher, ImportView },
+  components: { Icon, MonthSwitcher, ImportView, CardChip },
   emits: ['edit'],
   setup() {
     const { categoryById, accountById } = useLookups();
@@ -105,18 +106,18 @@ export const OperationsView = {
             <template v-if="t.kind === 'expense'">
               <span class="z-left tx3-amount negative">−{{ money(t.amount) }}</span>
               <span class="z-mid"><span class="tx3-cat">{{ view(t).icon }} {{ view(t).title }}</span><small v-if="t.note">{{ t.note }}</small></span>
-              <span class="z-right tx3-acc"><span aria-hidden="true">{{ view(t).acc?.icon }}</span> {{ view(t).acc?.name ?? '?' }}</span>
+              <span class="z-right tx3-acc"><card-chip :account="view(t).acc" size="sm"/><span class="acc-name">{{ view(t).acc?.name ?? '?' }}</span></span>
             </template>
             <template v-else-if="t.kind === 'income'">
-              <span class="z-left tx3-acc"><span aria-hidden="true">{{ view(t).acc?.icon }}</span> {{ view(t).acc?.name ?? '?' }}</span>
+              <span class="z-left tx3-acc"><card-chip :account="view(t).acc" size="sm"/><span class="acc-name">{{ view(t).acc?.name ?? '?' }}</span></span>
               <span class="z-mid"><span class="tx3-cat">{{ view(t).icon }} {{ view(t).title }}</span><small v-if="t.note">{{ t.note }}</small></span>
               <span class="z-right tx3-amount income">+{{ money(t.amount) }}</span>
             </template>
             <template v-else>
-              <span class="z-left tx3-acc"><span aria-hidden="true">{{ view(t).acc?.icon }}</span> {{ view(t).acc?.name ?? '?' }}</span>
+              <span class="z-left tx3-acc"><card-chip :account="view(t).acc" size="sm"/><span class="acc-name">{{ view(t).acc?.name ?? '?' }}</span></span>
               <span class="z-mid"><span class="tx3-amount">{{ money(t.amount) }}</span><small class="tx3-arrow">перевод →</small>
                 <small v-if="t.note">{{ t.note }}</small></span>
-              <span class="z-right tx3-acc"><span aria-hidden="true">{{ view(t).to?.icon }}</span> {{ view(t).to?.name ?? '?' }}</span>
+              <span class="z-right tx3-acc"><card-chip :account="view(t).to" size="sm"/><span class="acc-name">{{ view(t).to?.name ?? '?' }}</span></span>
             </template>
           </button>
         </div>
