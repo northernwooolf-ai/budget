@@ -668,6 +668,7 @@ fieldset.plain:disabled { opacity: .75; }
 .kv span { color: var(--text-2); min-width: 0; }
 .kv b { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .kv-total span { color: var(--text); font-weight: 600; }
+.kv-note { margin-top: 6px; font-size: .8rem; }
 .month-line { align-items: center; gap: 6px; }
 .month-line .month-name { color: var(--muted); margin-right: 2px; }
 .pill {

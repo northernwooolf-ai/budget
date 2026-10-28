@@ -314,8 +314,8 @@ export const HomeView = {
 
     // Доступные деньги — наличные и дебетовые карты; вклады и инвестиции отдельно,
     // потому что их нельзя быстро снять. Долги считаются только по реальным минусам.
-    // Плюс на кредитке или кредите (переплата) идёт только во «Всего»: в доступные деньги
-    // его не добавляем, чтобы не раздувать их, если там по ошибке записан лимит.
+    // Плюс на кредитке или кредите в итог не идёт: чаще всего там по ошибке записан лимит,
+    // а не деньги. Такая сумма показывается отдельной подсказкой, чтобы её поправили.
     const totals = computed(() => {
       let available = 0, savings = 0, owedToUs = 0, weOwe = 0, other = 0;
       for (const a of active.value) {
@@ -328,8 +328,9 @@ export const HomeView = {
       }
       return {
         available, savings, owedToUs, weOwe,
+        other,
         hero: available - (withDebts.value ? weOwe : 0),
-        total: available + savings + owedToUs + other - weOwe,
+        total: available + savings + owedToUs - weOwe,
       };
     });
 
@@ -376,6 +377,8 @@ export const HomeView = {
         <span :class="['hero', { negative: totals.hero < 0 }]">{{ money(totals.hero) }}</span>
         <span class="hint">Наличные и дебетовые карты{{ withDebts ? ' минус кредиты и долги' : '' }}</span>
         <div class="kv-list">
+          <div class="kv"><span>Доступные деньги</span>
+            <b :class="{ negative: totals.available < 0 }">{{ money(totals.available) }}</b></div>
           <div class="kv"><span>Вклады и инвестиции</span>
             <b :class="{ negative: totals.savings < 0 }">{{ money(totals.savings) }}</b></div>
           <div class="kv"><span>Нам должны</span><b>{{ money(totals.owedToUs) }}</b></div>
@@ -384,6 +387,10 @@ export const HomeView = {
           <div class="kv kv-total"><span>Всего с вкладами и долгами</span>
             <b :class="{ negative: totals.total < 0 }">{{ money(totals.total) }}</b></div>
         </div>
+        <p v-if="totals.other > 0" class="hint kv-note">
+          ⚠ Не учтено: +{{ money(totals.other) }} на кредитных картах и кредитах — похоже, там записан лимит,
+          а не долг. Поправьте остаток через «Изменить» в карточке счёта.
+        </p>
         <div class="month-line">
           <span class="month-name">{{ monthLabel(state.month) }}</span>
           <span class="pill income">+{{ money(month.income) }}</span>
