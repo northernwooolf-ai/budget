@@ -585,7 +585,8 @@ fieldset.plain:disabled { opacity: .75; }
 .pay-card-name { font-size: 1.05rem; }.cb-label { font-weight: 600; overflow-wrap: anywhere; }
 .cb-account { color: var(--text-2); font-size: .88rem; text-align: right; }
 .cb-pct { color: var(--primary); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
-.cb-add { display: grid; grid-template-columns: 1fr 1fr 70px auto; gap: 8px; }
+.cb-add { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.cb-card.current .cb-card-head { color: var(--primary); }
 @media (max-width: 560px) { .cb-add { grid-template-columns: 1fr 70px; } .cb-add .acc-select { grid-column: 1 / -1; } .cb-add .btn { grid-column: 1 / -1; } }
 .cb-card-head { display: flex; align-items: center; gap: 8px; }
 

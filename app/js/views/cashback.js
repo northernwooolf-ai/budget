@@ -1,13 +1,13 @@
 // Кэшбэки: раз в месяц выбираете по картам («Супермаркеты 7%»), привязываете к своим категориям,
 // а приложение подсказывает, какой картой что выгоднее покупать.
-import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610290230';
-import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610290230';
-import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610290230';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290230';
-import { Icon, Modal } from '../components.js?v=2610290230';
-import { CardChip, AccountSelect } from '../cards.js?v=2610290230';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290230';
+import { ref, computed, watch, nextTick } from 'vue';
+import { api } from '../api.js?v=2610290233';
+import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610290233';
+import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610290233';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290233';
+import { Icon, Modal } from '../components.js?v=2610290233';
+import { CardChip, AccountSelect } from '../cards.js?v=2610290233';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290233';
 
 // Карты, по которым бывает кэшбэк: наличные и вклады не нужны.
 const cardAccounts = () => state.accounts
@@ -109,13 +109,16 @@ const CashbackEditor = {
     const error = ref('');
     const cards = computed(cardAccounts);
     const tree = computed(() => categoryTree('expense'));
-    const draft = ref({ account_id: cards.value[0]?.id ?? null, label: '', percent: '' });
+    // Выбранная карта: «Добавить» добавляет на неё ещё одну пустую строку кэшбэка.
+    const cardId = ref(cards.value[0]?.id ?? null);
+    let nextKey = 0;
+    const withKey = (r) => ({ ...r, _key: `k${nextKey++}` });
 
     async function load() {
       loading.value = true;
       removed.value = [];
       try {
-        rows.value = (await api.listCashbacks(isoDate(month.value))).map((c) => ({ ...c, percent: String(c.percent).replace('.', ',') }));
+        rows.value = (await api.listCashbacks(isoDate(month.value))).map((c) => withKey({ ...c, percent: String(c.percent).replace('.', ',') }));
       } catch (e) { toast(e.message, 'error'); rows.value = []; }
       loading.value = false;
     }
@@ -124,19 +127,20 @@ const CashbackEditor = {
     async function copyPrevious() {
       const prev = await api.listCashbacks(isoDate(addMonths(month.value, -1)));
       if (!prev.length) return toast('В прошлом месяце кэшбэков нет', 'error');
-      rows.value = prev.map(({ account_id, label, percent, category_ids }) => ({
+      rows.value = prev.map(({ account_id, label, percent, category_ids }) => withKey({
         account_id, label, percent: String(percent).replace('.', ','), category_ids: [...category_ids],
       }));
     }
 
-    function addRow() {
+    async function addRow() {
       error.value = '';
-      const percent = parseAmount(draft.value.percent);
-      if (!draft.value.account_id) return (error.value = 'Выберите карту');
-      if (!draft.value.label.trim()) return (error.value = 'Напишите категорию кэшбэка, как в банке');
-      if (!(percent > 0 && percent <= 100)) return (error.value = 'Процент — число от 0 до 100');
-      rows.value.push({ account_id: draft.value.account_id, label: draft.value.label.trim(), percent: draft.value.percent, category_ids: [] });
-      draft.value = { ...draft.value, label: '', percent: '' };
+      if (!cardId.value) return (error.value = 'Выберите карту');
+      const row = withKey({ account_id: cardId.value, label: '', percent: '', category_ids: [] });
+      rows.value.push(row);
+      await nextTick();
+      const input = document.querySelector(`[data-cb-key="${row._key}"]`);
+      input?.focus();
+      input?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
 
     function removeRow(r) {
@@ -173,8 +177,9 @@ const CashbackEditor = {
 
     // Группы по картам; счета не из списка карт (например, ушедшие в архив) тоже показываем,
     // чтобы такие кэшбэки можно было увидеть и удалить.
+    // Выбранная карта — первой, чтобы новые строки появлялись сразу под кнопкой «Добавить».
     const byCard = computed(() => {
-      const ids = [...new Set([...cards.value.map((a) => a.id), ...rows.value.map((r) => r.account_id)])];
+      const ids = [...new Set([cardId.value, ...cards.value.map((a) => a.id), ...rows.value.map((r) => r.account_id)])];
       return ids.map((id) => ({
         account: state.accounts.find((a) => a.id === id) ?? { id, name: 'Удалённый счёт', icon: '❔' },
         rows: rows.value.filter((r) => r.account_id === id),
@@ -183,10 +188,12 @@ const CashbackEditor = {
 
     async function save() {
       error.value = '';
+      // Совсем пустые новые строки (добавили и не заполнили) просто пропускаем.
+      const filled = rows.value.filter((r) => r.id || r.label.trim() || String(r.percent).trim());
       const out = [];
-      for (const r of rows.value) {
+      for (const r of filled) {
         const percent = parseAmount(r.percent);
-        if (!r.label.trim()) return (error.value = `«${accountName(r.account_id)}»: пустое название кэшбэка`);
+        if (!r.label.trim()) return (error.value = `«${accountName(r.account_id)}»: напишите категорию кэшбэка, как в банке`);
         if (!(percent > 0 && percent <= 100)) return (error.value = `«${r.label}»: процент — число от 0 до 100`);
         out.push({ id: r.id, month: isoDate(month.value), account_id: r.account_id, label: r.label.trim(), percent, category_ids: [...r.category_ids] });
       }
@@ -196,12 +203,12 @@ const CashbackEditor = {
         emit('close');
       } catch {
         // Часть уже сохранилась: запоминаем полученные номера, чтобы не создать их повторно.
-        out.forEach((o, i) => { if (o.id) rows.value[i].id = o.id; });
+        out.forEach((o, i) => { if (o.id) filled[i].id = o.id; });
       } finally { busy.value = false; }
     }
 
     return {
-      month, rows, loading, busy, error, cards, tree, draft, byCard, LABELS,
+      month, rows, loading, busy, error, cards, tree, cardId, byCard, LABELS,
       shift: (n) => { month.value = addMonths(month.value, n); },
       copyPrevious, addRow, removeRow, chipsOf, unpick, pickingFor, cardGroups, save, monthLabel, groupLabel, categoryLabel,
     };
@@ -218,10 +225,8 @@ const CashbackEditor = {
           тогда при вводе траты приложение подскажет, какой картой выгоднее. Без привязки кэшбэк считается «на все покупки».</p>
 
         <div class="cb-add">
-          <account-select v-model="draft.account_id" :groups="cardGroups" label="Карта"/>
-          <input v-model="draft.label" list="cb-labels" placeholder="Категория в банке" aria-label="Категория в банке">
-          <input v-model="draft.percent" inputmode="decimal" placeholder="%" class="cb-percent" aria-label="Процент">
-          <button type="button" class="btn" @click="addRow"><icon name="plus"/> Добавить</button>
+          <account-select v-model="cardId" :groups="cardGroups" label="Карта"/>
+          <button type="button" class="btn" @click="addRow"><icon name="plus"/> Добавить кэшбэк</button>
           <datalist id="cb-labels"><option v-for="l in LABELS" :key="l" :value="l"></option></datalist>
         </div>
 
@@ -231,12 +236,12 @@ const CashbackEditor = {
           <button class="btn" @click="copyPrevious">Скопировать с прошлого месяца</button>
         </div>
 
-        <div v-for="g in byCard" :key="g.account.id" class="cb-card">
+        <div v-for="g in byCard" :key="g.account.id" :class="['cb-card', { current: g.account.id === cardId }]">
           <div class="field-label cb-card-head"><card-chip :account="g.account" size="sm"/> {{ g.account.name }}</div>
-          <div v-for="(r, i) in g.rows" :key="r.id ?? i" class="cb-row">
+          <div v-for="r in g.rows" :key="r._key" class="cb-row">
             <div class="cb-row-top">
-              <input v-model="r.label" list="cb-labels" aria-label="Категория в банке">
-              <input v-model="r.percent" inputmode="decimal" class="cb-percent" aria-label="Процент"><span>%</span>
+              <input v-model="r.label" :data-cb-key="r._key" list="cb-labels" placeholder="Категория в банке" aria-label="Категория в банке">
+              <input v-model="r.percent" inputmode="decimal" class="cb-percent" placeholder="0" aria-label="Процент"><span>%</span>
               <button type="button" class="icon-btn" aria-label="Удалить кэшбэк" @click="removeRow(r)"><icon name="trash" :size="18"/></button>
             </div>
             <div class="cb-cats">
@@ -255,7 +260,7 @@ const CashbackEditor = {
       <template #footer>
         <span class="spacer"></span>
         <button type="button" class="btn ghost" @click="$emit('close')">Отмена</button>
-        <button type="button" class="btn primary" :disabled="busy || loading" @click="save">Сохранить</button>
+        <button type="button" class="btn primary" :disabled="busy || loading" @click="save">Сохранить кэшбэк</button>
       </template>
     </modal>`,
 };
