@@ -1,0 +1,7 @@
+# Настройки Netlify для файлов приложения.
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+
+# Сервис-воркер всегда проверяется заново, чтобы обновления приходили сразу.
+/sw.js
+  Cache-Control: no-cache

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проверка связи</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #f4f5f3; --fg: #111412; --muted: #6b726d; --ok: #0a7a35; --bad: #c0261a; --card: #fff; --border: #0001; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0f1110; --fg: #eef0ec; --muted: #9aa09b; --ok: #3ccf6e; --bad: #f97066; --card: #1a1c1b; --border: #fff2; } }
+    body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, sans-serif; }
+    h1 { font-size: 1.3rem; margin: 0 0 4px; }
+    p { color: var(--muted); margin: 0 0 16px; }
+    ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    li { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .ok { color: var(--ok); font-weight: 600; } .bad { color: var(--bad); font-weight: 600; }
+    small { color: var(--muted); display: block; margin-top: 2px; }
+    button { margin-top: 16px; font: inherit; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: inherit; }
+  </style>
+</head>
+<body>
+  <h1>Проверка связи</h1>
+  <p>Откройте эту страницу без VPN и пришлите скриншот результата.</p>
+  <ul id="list"></ul>
+  <button onclick="run()">Проверить ещё раз</button>
+  <script>
+    // Те же адрес и ключ, что в js/config.js (ключ публичный).
+    const SUPABASE_URL = 'https://zfbrdirclwzpfbfcmvko.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_nB1Sf3XAfWeFh4d2kPHONw_heAG4f7w';
+    const CHECKS = [
+      ['Сайт приложения (Netlify)', 'js/main.js', {}],
+      ['Библиотеки приложения', 'vendor/vue.esm-browser.prod.js', {}],
+      ['База данных: вход (Supabase)', SUPABASE_URL + '/auth/v1/health', { headers: { apikey: SUPABASE_KEY } }],
+      ['База данных: настройки', SUPABASE_URL + '/auth/v1/settings', { headers: { apikey: SUPABASE_KEY } }],
+      // Большой запрос ловит замедление провайдером, при котором соединение зависает после ~16 КБ.
+      // Без входа сервер ответит «нет доступа» — это нормально, важно, что ответ вообще пришёл.
+      ['База данных: большой запрос (100 КБ)', SUPABASE_URL + '/rest/v1/rpc/my_household_id',
+        { method: 'POST', body: JSON.stringify({ pad: 'x'.repeat(100 * 1024) }),
+          headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }, anyStatus: true }],
+      ['Распознавание скриншотов (функция)', SUPABASE_URL + '/functions/v1/recognize', { method: 'OPTIONS' }],
+      ['Старый источник библиотек (jsDelivr)', 'https://cdn.jsdelivr.net/npm/vue@3.4.38/package.json', {}],
+    ];
+    async function check([name, url, opts]) {
+      const li = document.createElement('li');
+      li.innerHTML = `${name}: <span>проверяю…</span>`;
+      document.getElementById('list').append(li);
+      const t0 = performance.now();
+      const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const res = await fetch(url, { ...opts, cache: 'no-store', signal: ctrl.signal });
+        const size = (await res.arrayBuffer()).byteLength;
+        const ms = Math.round(performance.now() - t0);
+        li.querySelector('span').outerHTML = res.ok || res.status === 204 || opts.anyStatus
+          ? `<span class="ok">✓ работает</span><small>${ms} мс, ${Math.round(size / 1024)} КБ</small>`
+          : `<span class="bad">✗ ответ ${res.status}</span><small>${ms} мс</small>`;
+      } catch (e) {
+        li.querySelector('span').outerHTML = `<span class="bad">✗ не открывается</span><small>${e.name === 'AbortError' ? 'нет ответа 15 секунд' : e.message}</small>`;
+      } finally { clearTimeout(timer); }
+    }
+    async function run() {
+      document.getElementById('list').innerHTML = '';
+      for (const c of CHECKS) await check(c);
+    }
+    run();
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Семейный бюджет</title>
+  <meta name="description" content="Учёт семейных доходов и расходов">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Библиотеки лежат внутри приложения (папка vendor), чтобы не зависеть от внешних CDN. -->
+  <script src="vendor/supabase.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "vue": "./vendor/vue.esm-browser.prod.js",
+        "@supabase/supabase-js": "./js/supabase-global.js",
+        "sortablejs": "./vendor/sortable.esm.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app"><div class="center-page"><p class="muted">Загрузка…</p></div></div>
+  <noscript>Для работы приложения нужен JavaScript.</noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
