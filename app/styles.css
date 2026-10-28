@@ -750,6 +750,12 @@ fieldset.plain:disabled { opacity: .75; }
 .kv b { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .kv-total span { color: var(--text); font-weight: 600; }
 .kv-note { margin-top: 6px; font-size: .8rem; }
+.details-toggle {
+  margin-top: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 12px; border: 0; border-radius: 10px; background: var(--surface-2);
+  color: var(--text-2); font: inherit; font-weight: 600; font-size: .9rem;
+}
+.details-toggle + .kv-list { margin-top: 4px; }
 .month-sum { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .month-sum-head {
   padding: 6px 12px; border-radius: 10px; background: var(--surface-2);

@@ -352,6 +352,7 @@ export const HomeView = {
     // «С учётом кредитов» — вычитать ли долги из доступных денег.
     const withDebts = ref(localGet(DEBTS_KEY) === '1');
     watch(withDebts, (v) => localSet(DEBTS_KEY, v ? '1' : '0'));
+    const details = ref(false);
 
     // Доступные деньги — наличные и дебетовые карты; вклады и инвестиции отдельно,
     // потому что их нельзя быстро снять. Долги считаются только по реальным минусам.
@@ -393,7 +394,7 @@ export const HomeView = {
     }
 
     return {
-      state, editing, viewing, startOpen, needsStart, collapsed, showArchive, toggle, groups, archived, totals, withDebts, month, alerts,
+      state, editing, viewing, startOpen, needsStart, collapsed, showArchive, toggle, groups, archived, totals, withDebts, details, month, alerts,
       editAccount, reorder, money, rub, monthLabel, Math, admin: computed(isAdmin),
     };
   },
@@ -417,7 +418,12 @@ export const HomeView = {
         </div>
         <span :class="['hero', { negative: totals.hero < 0 }]">{{ rub(totals.hero) }}</span>
         <span class="hint">Наличные и дебетовые карты{{ withDebts ? ' минус кредиты и долги' : '' }}</span>
-        <div class="kv-list">
+        <!-- Расшифровка свёрнута при каждом открытии; ⚠ на кнопке, если есть неучтённое. -->
+        <button type="button" class="details-toggle" :aria-expanded="details" @click="details = !details">
+          <span>{{ totals.other > 0 ? '⚠ ' : '' }}Подробнее</span>
+          <icon name="down" :class="['chev', { closed: !details }]" :size="16"/>
+        </button>
+        <div v-if="details" class="kv-list">
           <div class="kv"><span>Доступные деньги</span>
             <b :class="{ negative: totals.available < 0 }">{{ rub(totals.available) }}</b></div>
           <div class="kv"><span>Вклады и инвестиции</span>
@@ -428,7 +434,7 @@ export const HomeView = {
           <div class="kv kv-total"><span>Всего с вкладами и долгами</span>
             <b :class="{ negative: totals.total < 0 }">{{ rub(totals.total) }}</b></div>
         </div>
-        <p v-if="totals.other > 0" class="hint kv-note">
+        <p v-if="details && totals.other > 0" class="hint kv-note">
           ⚠ Не учтено: +{{ rub(totals.other) }} на кредитных картах и кредитах — похоже, там записан лимит,
           а не долг. Поправьте остаток через «Изменить» в карточке счёта.
         </p>
@@ -438,7 +444,7 @@ export const HomeView = {
           <div class="month-sum-row">
             <div><small>Расходы</small><b class="negative">−{{ rub(month.expense) }}</b></div>
             <div><small>Итог</small>
-              <b :class="month.diff < 0 ? 'negative' : 'income'">{{ Math.round(month.diff) > 0 ? '+' : '' }}{{ rub(month.diff) }}</b></div>
+              <b :class="month.diff < 0 ? 'negative' : 'income'">{{ Math.trunc(month.diff) > 0 ? '+' : '' }}{{ rub(month.diff) }}</b></div>
             <div><small>Доходы</small><b class="income">+{{ rub(month.income) }}</b></div>
           </div>
         </div>

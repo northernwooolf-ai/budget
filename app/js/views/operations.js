@@ -76,7 +76,7 @@ export const OperationsView = {
         <div class="stat"><span class="stat-label">Доходы</span><span class="stat-value income">{{ rub(totals.income) }}</span></div>
         <div class="stat"><span class="stat-label">Расходы</span><span class="stat-value">{{ rub(totals.expense) }}</span></div>
         <div class="stat"><span class="stat-label">Итог месяца</span>
-          <span :class="['stat-value', totals.diff < 0 ? 'negative' : 'income']">{{ Math.round(totals.diff) > 0 ? '+' : '' }}{{ rub(totals.diff) }}</span></div>
+          <span :class="['stat-value', totals.diff < 0 ? 'negative' : 'income']">{{ Math.trunc(totals.diff) > 0 ? '+' : '' }}{{ rub(totals.diff) }}</span></div>
       </div>
 
       <div class="view-bar">
