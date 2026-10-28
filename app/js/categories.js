@@ -1,7 +1,7 @@
 // Дерево категорий: разделы («1 — Еда») с категориями («1.1. Еда домой»)
 // и категории без раздела. Номера ставятся по порядку и пересчитываются сами.
-import { state } from './store.js?v=2610290228';
-import { bySort } from './utils.js?v=2610290228';
+import { state } from './store.js?v=2610290230';
+import { bySort } from './utils.js?v=2610290230';
 
 export function categoryTree(kind) {
   const groups = state.categoryGroups.filter((g) => g.kind === kind).sort(bySort);

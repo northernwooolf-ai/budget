@@ -685,11 +685,15 @@ fieldset.plain:disabled { opacity: .75; }
 /* ---------- Операции «как в таблице»: расход слева, перевод посередине, доход справа ---------- */
 .view-bar { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 /* Подписи стоят над своими колонками таблицы: расходы слева, переводы посередине, доходы справа. */
-.plate.view-legend {
-  display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 2px; font-size: .8rem;
+/* Плашка, которая не уезжает за экран при прокрутке. */
+.sticky-plate {
   position: sticky; top: calc(env(safe-area-inset-top, 0px) + 6px); z-index: 5;
   box-shadow: 0 0 0 6px var(--bg), 0 4px 14px rgb(0 0 0 / .25);
 }
+.plate.view-legend { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 2px; font-size: .8rem; }
+.money-plate { flex-direction: column; gap: 0; padding: 8px 12px; }
+.money-plate-label { font-size: .8rem; font-weight: 500; color: var(--muted); }
+.money-plate b { font-size: 1.6rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
 .view-legend button {
   min-height: 34px; padding: 4px 10px; border: 0; border-radius: 8px; background: none;
   font: inherit; font-weight: 600; transition: opacity .15s, background .15s;

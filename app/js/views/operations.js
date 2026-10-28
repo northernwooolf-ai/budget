@@ -1,11 +1,11 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290228';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290228';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290228';
-import { categoryTree, groupLabel } from '../categories.js?v=2610290228';
-import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290228';
-import { cashbackHint } from './cashback.js?v=2610290228';
-import { CardChip, AccountSelect } from '../cards.js?v=2610290228';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290230';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290230';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290230';
+import { categoryTree, groupLabel } from '../categories.js?v=2610290230';
+import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290230';
+import { cashbackHint } from './cashback.js?v=2610290230';
+import { CardChip, AccountSelect } from '../cards.js?v=2610290230';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -94,7 +94,7 @@ export const OperationsView = {
         </div>
       </div>
       <!-- Плашка-фильтр прилипает к верху экрана при прокрутке; в виде «как в таблице» подписи стоят над своими колонками. -->
-      <div :class="['plate', 'view-legend', { filtered: kindFilter }]" role="group" aria-label="Показать только">
+      <div :class="['plate', 'sticky-plate', 'view-legend', { filtered: kindFilter }]" role="group" aria-label="Показать только">
         <button v-for="k in KINDS" :key="k.id" type="button" :class="[k.cls, { on: kindFilter === k.id }]"
           :aria-pressed="kindFilter === k.id" @click="toggleKind(k.id)">
           {{ listView === 'table' ? k.table : k.label }}

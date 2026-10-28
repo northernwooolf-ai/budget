@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610290228';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610290228';
-import { limitStatus } from '../categories.js?v=2610290228';
-import { expanded, toggleIn } from '../ui-state.js?v=2610290228';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610290228';
-import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610290228';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610290228';
-import { useLookups } from './operations.js?v=2610290228';
-import { CashbackCard } from './cashback.js?v=2610290228';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610290228';
+import { api } from '../api.js?v=2610290230';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610290230';
+import { limitStatus } from '../categories.js?v=2610290230';
+import { expanded, toggleIn } from '../ui-state.js?v=2610290230';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610290230';
+import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610290230';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610290230';
+import { useLookups } from './operations.js?v=2610290230';
+import { CashbackCard } from './cashback.js?v=2610290230';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610290230';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -411,13 +411,17 @@ export const HomeView = {
         <button class="btn primary" @click="startOpen = true">Указать стартовые остатки</button>
       </div>
 
+      <!-- Главная сумма — отдельной плашкой, которая прилипает к верху экрана при прокрутке. -->
+      <div class="plate sticky-plate money-plate" role="status">
+        <span class="money-plate-label">{{ withDebts ? 'Доступно за вычетом долгов' : 'Доступные деньги' }}</span>
+        <b :class="{ negative: totals.hero < 0 }">{{ rub(totals.hero) }}</b>
+      </div>
+
       <div class="card pad capital">
         <div class="capital-head">
-          <span class="stat-label">{{ withDebts ? 'Доступно за вычетом долгов' : 'Доступные деньги' }}</span>
+          <span class="hint">Наличные и дебетовые карты{{ withDebts ? ' минус кредиты и долги' : '' }}</span>
           <label class="check small"><input id="with-debts" type="checkbox" v-model="withDebts"> С учётом кредитов</label>
         </div>
-        <span :class="['hero', { negative: totals.hero < 0 }]">{{ rub(totals.hero) }}</span>
-        <span class="hint">Наличные и дебетовые карты{{ withDebts ? ' минус кредиты и долги' : '' }}</span>
         <!-- Расшифровка свёрнута при каждом открытии. -->
         <button type="button" class="plate details-toggle" :aria-expanded="details" @click="details = !details">
           <span>Подробнее</span>

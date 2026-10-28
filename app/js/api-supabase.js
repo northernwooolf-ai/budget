@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610290228';
-import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610290228';
-import { pick } from './utils.js?v=2610290228';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610290230';
+import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610290230';
+import { pick } from './utils.js?v=2610290230';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
