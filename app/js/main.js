@@ -1,15 +1,16 @@
 import { createApp, ref, onMounted, onBeforeUnmount } from 'vue';
-import { state, init } from './store.js?v=2610290221';
-import { localGet, localSet } from './utils.js?v=2610290221';
-import { Icon } from './components.js?v=2610290221';
-import { appearance } from './appearance.js?v=2610290221';
-import { lock } from './lock.js?v=2610290221';
-import { LockScreen } from './views/lock-screen.js?v=2610290221';
-import { AuthView, OnboardingView } from './views/auth.js?v=2610290221';
-import { OperationsView, TxEditor } from './views/operations.js?v=2610290221';
-import { HomeView } from './views/home.js?v=2610290221';
-import { ReportsView } from './views/reports.js?v=2610290221';
-import { SettingsView } from './views/settings.js?v=2610290221';
+import { state, init } from './store.js?v=2610290222';
+import { localGet, localSet } from './utils.js?v=2610290222';
+import { Icon } from './components.js?v=2610290222';
+import { appearance } from './appearance.js?v=2610290222';
+import { lock } from './lock.js?v=2610290222';
+import { LockScreen } from './views/lock-screen.js?v=2610290222';
+import { AuthView, OnboardingView } from './views/auth.js?v=2610290222';
+import { OperationsView, TxEditor } from './views/operations.js?v=2610290222';
+import { HomeView } from './views/home.js?v=2610290222';
+import { ReportsView } from './views/reports.js?v=2610290222';
+import { SettingsView } from './views/settings.js?v=2610290222';
+import { ImportView } from './views/import.js?v=2610290222';
 
 const TABS = [
   { id: 'home', label: 'Главная', icon: 'home' },
@@ -19,13 +20,21 @@ const TABS = [
 ];
 
 const App = {
-  components: { Icon, AuthView, OnboardingView, OperationsView, TxEditor, HomeView, ReportsView, SettingsView, LockScreen },
+  components: { Icon, AuthView, OnboardingView, OperationsView, TxEditor, HomeView, ReportsView, SettingsView, LockScreen, ImportView },
   setup() {
     const saved = localGet('tab');
     const tab = ref(TABS.some((t) => t.id === saved) ? saved : 'home');
     const editor = ref(null);
     const setTab = (id) => { tab.value = id; localSet('tab', id); window.scrollTo(0, 0); };
     const openEditor = (tx) => { editor.value = { tx }; };
+    // «+» сначала раскрывает две плашки: новая операция или со скриншота.
+    const fabOpen = ref(false);
+    const importing = ref(false);
+    const fabPick = (what) => {
+      fabOpen.value = false;
+      if (what === 'tx') openEditor(null);
+      else importing.value = true;
+    };
 
     // Кнопка «+» прячется, пока листаете вниз, и возвращается при прокрутке вверх.
     const fabHidden = ref(false);
@@ -33,12 +42,13 @@ const App = {
     const onScroll = () => {
       const y = window.scrollY;
       if (Math.abs(y - lastY) > 8) fabHidden.value = y > lastY && y > 80;
+      if (fabHidden.value) fabOpen.value = false;
       lastY = y;
     };
     onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }));
     onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
 
-    return { state, appearance, lock, TABS, tab, editor, setTab, openEditor, fabHidden };
+    return { state, appearance, lock, TABS, tab, editor, setTab, openEditor, fabHidden, fabOpen, fabPick, importing };
   },
   template: `
     <div v-if="appearance.bg" class="app-bg" :style="{ backgroundImage: 'url(' + appearance.bg + ')' }" aria-hidden="true"></div>
@@ -62,10 +72,19 @@ const App = {
         <reports-view v-else-if="tab==='reports'"/>
         <settings-view v-else/>
       </main>
-      <button v-if="tab==='ops' || tab==='home'" :class="['fab', { hidden: fabHidden }]" @click="openEditor(null)" aria-label="Добавить операцию">
-        <icon name="plus" :size="28"/>
-      </button>
+      <template v-if="tab==='ops' || tab==='home'">
+        <div v-if="fabOpen" class="fab-backdrop" @click="fabOpen = false"></div>
+        <div v-if="fabOpen" class="fab-menu" role="menu">
+          <button type="button" class="fab-pill" role="menuitem" @click="fabPick('shot')"><span aria-hidden="true">📷</span> Скриншот</button>
+          <button type="button" class="fab-pill" role="menuitem" @click="fabPick('tx')"><icon name="plus" :size="18"/> Операция</button>
+        </div>
+        <button :class="['fab', { hidden: fabHidden, open: fabOpen }]" :aria-expanded="fabOpen" aria-haspopup="menu"
+          aria-label="Добавить" @click="fabOpen = !fabOpen">
+          <icon name="plus" :size="28"/>
+        </button>
+      </template>
       <tx-editor v-if="editor" :tx="editor.tx" @close="editor = null"/>
+      <import-view v-if="importing" @close="importing = false"/>
     </div>
     <div v-if="state.toast" :class="['toast', state.toast.type]" role="status">{{ state.toast.text }}</div>`,
 };

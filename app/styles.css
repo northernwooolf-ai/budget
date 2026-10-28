@@ -829,6 +829,20 @@ button.plate { -webkit-appearance: none; appearance: none; }
 
 .fab { transition: transform .2s ease, opacity .2s ease; }
 .fab.hidden { transform: translateY(140%); opacity: 0; pointer-events: none; }
+.fab.open svg { transform: rotate(45deg); }
+.fab svg { transition: transform .15s; }
+/* Плашки «Скриншот» и «Операция» слева от раскрытого «+». */
+.fab-backdrop { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .25); }
+.fab-menu {
+  position: fixed; z-index: 21; right: 88px; bottom: calc(var(--nav-h) + 28px + env(safe-area-inset-bottom));
+  display: flex; gap: 8px;
+}
+.fab-pill {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px; white-space: nowrap;
+  border: 0; border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-weight: 600;
+  box-shadow: 0 4px 14px rgb(0 0 0 / .3);
+}
+@media (prefers-reduced-motion: reduce) { .fab svg { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .fab { transition: none; } }
 
 @media (max-width: 480px) {
