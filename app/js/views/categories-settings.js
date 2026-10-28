@@ -3,11 +3,11 @@ import { ref, reactive, computed } from 'vue';
 import {
   state, isAdmin, saveCategory, deleteCategory, setArchived, reorder, moveCategory,
   saveCategoryGroup, deleteCategoryGroup,
-} from '../store.js?v=2610290215';
-import { money, parseAmount, amountToInput, bySort } from '../utils.js?v=2610290215';
-import { expanded, toggleIn } from '../ui-state.js?v=2610290215';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290215';
-import { Icon, Modal, EmojiPicker, ConfirmButton, vSortable } from '../components.js?v=2610290215';
+} from '../store.js?v=2610290221';
+import { money, parseAmount, amountToInput, bySort } from '../utils.js?v=2610290221';
+import { expanded, toggleIn } from '../ui-state.js?v=2610290221';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290221';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610290221';
 
 const parseLimit = (s) => (s === '' ? null : parseAmount(s));
 
@@ -163,7 +163,7 @@ const CategoryRow = {
 };
 
 export const CategoriesSettings = {
-  components: { Icon, ConfirmButton, CategoryRow, CategoryEditor, GroupEditor },
+  components: { Icon, ConfirmButton, CategoryRow, CategoryEditor, GroupEditor, DragLockButton },
   directives: { sortable: vSortable },
   setup() {
     const kind = ref('expense');
@@ -204,6 +204,7 @@ export const CategoriesSettings = {
       <div class="card-head">
         <h2>Категории</h2>
         <div v-if="admin" class="btn-row">
+          <drag-lock-button/>
           <button class="btn" @click="editingGroup = { kind }"><icon name="plus"/> Раздел</button>
           <button class="btn" @click="editingCat = { kind }"><icon name="plus"/> Категория</button>
         </div>

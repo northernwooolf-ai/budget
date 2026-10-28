@@ -1,8 +1,8 @@
 // Мелкие общие элементы интерфейса.
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import Sortable from 'sortablejs';
-import { state, shiftMonth } from './store.js?v=2610290215';
-import { monthLabel } from './utils.js?v=2610290215';
+import { state, shiftMonth } from './store.js?v=2610290221';
+import { monthLabel } from './utils.js?v=2610290221';
 
 const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -22,6 +22,8 @@ const ICONS = {
   grip: 'M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01',
   down: 'M6 9l6 6 6-6',
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5',
+  lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4',
+  unlock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 7.6-1.8',
   undo: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
   edit: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
   eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
@@ -71,15 +73,34 @@ export const ConfirmButton = {
 // Порядок в данных меняет обработчик, а Vue перерисовывает список сам.
 const sortableOptions = (value) => (typeof value === 'function' ? { onMove: value } : value);
 
+// Общий замок перетаскивания: при запуске всё заперто, чтобы на телефоне не менять порядок
+// случайно при прокрутке. Пока заперто, ручки для перетаскивания спрятаны.
+export const dragLocked = ref(true);
+watchEffect(() => document.documentElement.classList.toggle('drag-locked', dragLocked.value));
+
+export const DragLockButton = {
+  components: { Icon },
+  setup: () => ({ dragLocked }),
+  template: `
+    <button type="button" :class="['icon-btn', 'lock-btn', { open: !dragLocked }]" :aria-pressed="!dragLocked"
+      :title="dragLocked ? 'Разрешить менять порядок' : 'Запретить менять порядок'"
+      :aria-label="dragLocked ? 'Разрешить менять порядок' : 'Запретить менять порядок'"
+      @click="dragLocked = !dragLocked">
+      <icon :name="dragLocked ? 'lock' : 'unlock'" :size="18"/>
+    </button>`,
+};
+
+const applyDisabled = (el) => el._sortable.option('disabled',
+  !!sortableOptions(el._sortableValue).disabled || dragLocked.value);
+
 export const vSortable = {
   mounted(el, binding) {
     el._sortableValue = binding.value;
-    const { handle = '.drag-handle', group, disabled = false } = sortableOptions(binding.value);
+    const { handle = '.drag-handle', group } = sortableOptions(binding.value);
     let nextSibling = null;
     el._sortable = Sortable.create(el, {
       handle,
       group,
-      disabled,
       draggable: '.s-item',
       animation: 150,
       forceFallback: true, // одинаково на телефоне и компьютере
@@ -92,12 +113,14 @@ export const vSortable = {
         }
       },
     });
+    applyDisabled(el);
+    el._stopLockWatch = watch(dragLocked, () => applyDisabled(el));
   },
   updated(el, binding) {
     el._sortableValue = binding.value;
-    el._sortable.option('disabled', !!sortableOptions(binding.value).disabled);
+    applyDisabled(el);
   },
-  unmounted(el) { el._sortable.destroy(); },
+  unmounted(el) { el._stopLockWatch(); el._sortable.destroy(); },
 };
 
 const openModals = [];

@@ -377,6 +377,10 @@ button { cursor: pointer; }
 .sortable-fallback { opacity: .9 !important; box-shadow: var(--shadow); }
 body.sortable-dragging, .sortable-drag { user-select: none; }
 .drag-handle svg { stroke-width: 3.5; }
+/* Порядок заперт (кнопка с замком): ручек нет, строки нельзя случайно утащить при прокрутке. */
+.drag-locked .drag-handle { display: none; }
+.lock-btn { border: 1px solid var(--border); }
+.lock-btn.open { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
 .sortable-ghost { opacity: .35; background: var(--primary-soft); }
 .sortable-chosen { background: var(--surface); }
 .confirm-btn {
