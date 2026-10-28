@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610290245';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610290245';
-import { limitStatus } from '../categories.js?v=2610290245';
-import { expanded, toggleIn } from '../ui-state.js?v=2610290245';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610290245';
-import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610290245';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610290245';
-import { useLookups } from './operations.js?v=2610290245';
-import { CashbackCard } from './cashback.js?v=2610290245';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610290245';
+import { api } from '../api.js?v=2610290248';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610290248';
+import { limitStatus } from '../categories.js?v=2610290248';
+import { expanded, toggleIn } from '../ui-state.js?v=2610290248';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610290248';
+import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610290248';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610290248';
+import { useLookups } from './operations.js?v=2610290248';
+import { CashbackCard } from './cashback.js?v=2610290248';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610290248';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 

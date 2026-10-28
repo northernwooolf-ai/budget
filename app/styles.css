@@ -198,7 +198,9 @@ button { cursor: pointer; }
 .tx-sub:empty { display: none; }
 .tx-amount { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
 .tx-amount.income { color: var(--income); }
-.tx-amount.transfer { color: var(--muted); }
+/* Как в виде «как в таблице»: расходы красные, доходы зелёные, переводы белые. */
+.tx-amount.expense { color: var(--negative); }
+.tx-amount.transfer { color: var(--text); }
 
 .avatar {
   flex: none; width: 24px; height: 24px; border-radius: 50%;
