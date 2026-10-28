@@ -1,12 +1,12 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290209';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290209';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290209';
-import { categoryTree, groupLabel } from '../categories.js?v=2610290209';
-import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290209';
-import { ImportView } from './import.js?v=2610290209';
-import { cashbackHint } from './cashback.js?v=2610290209';
-import { CardChip, AccountSelect } from '../cards.js?v=2610290209';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290213';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290213';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290213';
+import { categoryTree, groupLabel } from '../categories.js?v=2610290213';
+import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290213';
+import { ImportView } from './import.js?v=2610290213';
+import { cashbackHint } from './cashback.js?v=2610290213';
+import { CardChip, AccountSelect } from '../cards.js?v=2610290213';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -36,9 +36,14 @@ export const OperationsView = {
       return { income, expense, diff: income - expense };
     });
 
+    // Фильтр по типу: нажатие на «расходы / переводы / доходы» оставляет только их, повторное — снимает.
+    const kindFilter = ref(null);
+    const toggleKind = (k) => { kindFilter.value = kindFilter.value === k ? null : k; };
+
     const groups = computed(() => {
       const out = [];
       for (const t of list.value) {
+        if (kindFilter.value && t.kind !== kindFilter.value) continue;
         let g = out[out.length - 1];
         if (!g || g.date !== t.date) out.push(g = { date: t.date, items: [], expense: 0 });
         g.items.push(t);
@@ -61,7 +66,13 @@ export const OperationsView = {
     const listView = ref(localGet('ops-view', 'table'));
     watch(listView, (v) => localSet('ops-view', v));
 
-    return { state, importing, totals, groups, view, listView, money, rub, dayLabel };
+    const KINDS = [
+      { id: 'expense', label: 'расходы', table: '← расходы', cls: 'negative' },
+      { id: 'transfer', label: 'переводы', table: 'переводы', cls: '' },
+      { id: 'income', label: 'доходы', table: 'доходы →', cls: 'income' },
+    ];
+
+    return { state, importing, totals, groups, view, listView, kindFilter, toggleKind, KINDS, money, rub, dayLabel };
   },
   template: `
     <section class="page">
@@ -79,18 +90,23 @@ export const OperationsView = {
           <span :class="['stat-value', totals.diff < 0 ? 'negative' : 'income']">{{ Math.trunc(totals.diff) > 0 ? '+' : '' }}{{ rub(totals.diff) }}</span></div>
       </div>
 
-      <!-- Переключатель по центру и не двигается; под ним в виде «как в таблице» — плашка с колонками. -->
+      <!-- Переключатель по центру и не двигается. -->
       <div class="view-bar">
         <div class="segmented mini" role="radiogroup" aria-label="Вид списка">
           <button :class="{ active: listView === 'table' }" @click="listView = 'table'">Как в таблице</button>
           <button :class="{ active: listView === 'list' }" @click="listView = 'list'">Обычный</button>
         </div>
-        <div v-if="listView === 'table'" class="plate view-legend">
-          <span class="negative">← расходы</span><span>переводы</span><span class="income">доходы →</span>
-        </div>
+      </div>
+      <!-- Плашка-фильтр прилипает к верху экрана при прокрутке; в виде «как в таблице» подписи стоят над своими колонками. -->
+      <div :class="['plate', 'view-legend', { filtered: kindFilter }]" role="group" aria-label="Показать только">
+        <button v-for="k in KINDS" :key="k.id" type="button" :class="[k.cls, { on: kindFilter === k.id }]"
+          :aria-pressed="kindFilter === k.id" @click="toggleKind(k.id)">
+          {{ listView === 'table' ? k.table : k.label }}
+        </button>
       </div>
 
       <p v-if="state.txLoading && !groups.length" class="empty">Загрузка…</p>
+      <p v-else-if="!groups.length && kindFilter" class="empty">В этом месяце таких операций нет.</p>
       <div v-else-if="!groups.length" class="empty">
         <p>В этом месяце операций пока нет.</p>
         <button class="btn primary" @click="$emit('edit', null)"><icon name="plus"/> Добавить первую</button>

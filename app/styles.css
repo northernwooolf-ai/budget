@@ -681,10 +681,23 @@ fieldset.plain:disabled { opacity: .75; }
 /* ---------- Операции «как в таблице»: расход слева, перевод посередине, доход справа ---------- */
 .view-bar { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 /* Подписи стоят над своими колонками таблицы: расходы слева, переводы посередине, доходы справа. */
-.plate.view-legend { display: grid; grid-template-columns: 1fr 1fr 1fr; font-size: .8rem; }
-.view-legend span:first-child { text-align: left; }
-.view-legend span:nth-child(2) { text-align: center; color: var(--muted); }
-.view-legend span:last-child { text-align: right; }
+.plate.view-legend {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 2px; font-size: .8rem;
+  position: sticky; top: calc(env(safe-area-inset-top, 0px) + 6px); z-index: 5;
+  box-shadow: 0 0 0 6px var(--bg), 0 4px 14px rgb(0 0 0 / .25);
+}
+.view-legend button {
+  min-height: 34px; padding: 4px 10px; border: 0; border-radius: 8px; background: none;
+  font: inherit; font-weight: 600; transition: opacity .15s, background .15s;
+}
+.view-legend button:first-child { text-align: left; }
+.view-legend button:nth-child(2) { text-align: center; color: var(--muted); }
+.view-legend button:last-child { text-align: right; }
+/* Включённый фильтр подсвечен, остальные приглушены. */
+.view-legend.filtered button { opacity: .35; }
+.view-legend.filtered button.on { opacity: 1; background: var(--surface); }
+.view-legend button.on:nth-child(2) { color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .view-legend button { transition: none; } }
 .tx3 {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px; align-items: center;
   width: 100%; min-height: 58px; padding: 10px 12px; border: 0; background: none; text-align: left;

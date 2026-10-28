@@ -1,13 +1,13 @@
 // Кэшбэки: раз в месяц выбираете по картам («Супермаркеты 7%»), привязываете к своим категориям,
 // а приложение подсказывает, какой картой что выгоднее покупать.
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610290209';
-import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610290209';
-import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610290209';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290209';
-import { Icon, Modal } from '../components.js?v=2610290209';
-import { CardChip, AccountSelect } from '../cards.js?v=2610290209';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290209';
+import { api } from '../api.js?v=2610290213';
+import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610290213';
+import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610290213';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610290213';
+import { Icon, Modal } from '../components.js?v=2610290213';
+import { CardChip, AccountSelect } from '../cards.js?v=2610290213';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290213';
 
 // Карты, по которым бывает кэшбэк: наличные и вклады не нужны.
 const cardAccounts = () => state.accounts
