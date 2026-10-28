@@ -6,6 +6,8 @@ import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js';
 import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js';
 import { categoryTree, groupLabel, categoryLabel } from '../categories.js';
 import { Icon, Modal } from '../components.js';
+import { CardChip, AccountSelect } from '../cards.js';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js';
 
 // Карты, по которым бывает кэшбэк: наличные и вклады не нужны.
 const cardAccounts = () => state.accounts
@@ -36,8 +38,67 @@ const LABELS = ['Супермаркеты', 'Рестораны и кафе', '�
   'Одежда и обувь', 'Маркетплейсы', 'Дом и ремонт', 'Детские товары', 'Животные', 'Цветы', 'Кино', 'Развлечения',
   'Электроника', 'Путешествия', 'Все покупки'];
 
-const CashbackEditor = {
+// Окно выбора категорий кэшбэка: галочки по одной, целым разделом или сразу все.
+const CategoryChecklist = {
   components: { Modal, Icon },
+  props: { tree: Object, modelValue: Array },
+  emits: ['update:modelValue', 'close'],
+  setup(props, { emit }) {
+    const open = ref(new Set());
+    const allIds = computed(() => [...props.tree.sections.flatMap((s) => s.items), ...props.tree.loose].map((c) => c.id));
+    const picked = computed(() => new Set(props.modelValue));
+    const countIn = (ids) => ids.filter((id) => picked.value.has(id)).length;
+    // Состояние галочки для набора: 'all' | 'some' | 'none'.
+    const stateOf = (ids) => { const n = countIn(ids); return n && n === ids.length ? 'all' : n ? 'some' : 'none'; };
+    const sectionIds = (s) => s.items.map((c) => c.id);
+    function setMany(ids, on) {
+      const next = new Set(props.modelValue);
+      ids.forEach((id) => (on ? next.add(id) : next.delete(id)));
+      emit('update:modelValue', [...next]);
+    }
+    const toggleOpen = (id) => { const s = new Set(open.value); s.has(id) ? s.delete(id) : s.add(id); open.value = s; };
+    return { open, allIds, picked, stateOf, sectionIds, setMany, toggleOpen, countIn, groupLabel };
+  },
+  template: `
+    <modal title="Категории кэшбэка" @close="$emit('close')">
+      <div class="checklist">
+        <label class="check-row strong">
+          <input type="checkbox" :checked="stateOf(allIds) === 'all'" :indeterminate="stateOf(allIds) === 'some'"
+            @change="setMany(allIds, $event.target.checked)">
+          <span>Все категории</span>
+        </label>
+        <div v-for="s in tree.sections" :key="s.group.id" class="check-section">
+          <div class="check-row check-head">
+            <input type="checkbox" :aria-label="'Весь раздел ' + s.group.name" :disabled="!s.items.length"
+              :checked="s.items.length && stateOf(sectionIds(s)) === 'all'" :indeterminate="stateOf(sectionIds(s)) === 'some'"
+              @change="setMany(sectionIds(s), $event.target.checked)">
+            <button type="button" class="check-toggle" :aria-expanded="open.has(s.group.id)" @click="toggleOpen(s.group.id)">
+              <span>{{ groupLabel(tree, s.group) }}</span>
+              <span class="hint">{{ countIn(sectionIds(s)) }}/{{ s.items.length }}</span>
+              <icon name="down" :class="['chev', { closed: !open.has(s.group.id) }]" :size="18"/>
+            </button>
+          </div>
+          <div v-show="open.has(s.group.id)" class="check-items">
+            <label v-for="c in s.items" :key="c.id" class="check-row">
+              <input type="checkbox" :checked="picked.has(c.id)" @change="setMany([c.id], $event.target.checked)">
+              <span>{{ tree.nums[c.id] }} {{ c.icon }} {{ c.name }}</span>
+            </label>
+          </div>
+        </div>
+        <label v-for="c in tree.loose" :key="c.id" class="check-row">
+          <input type="checkbox" :checked="picked.has(c.id)" @change="setMany([c.id], $event.target.checked)">
+          <span>{{ c.icon }} {{ c.name }}</span>
+        </label>
+      </div>
+      <template #footer>
+        <span class="spacer"></span>
+        <button type="button" class="btn primary" @click="$emit('close')">Готово</button>
+      </template>
+    </modal>`,
+};
+
+const CashbackEditor = {
+  components: { Modal, Icon, CardChip, AccountSelect, CategoryChecklist },
   emits: ['close'],
   setup(props, { emit }) {
     const month = ref(parseIso(currentMonthIso()));
@@ -83,15 +144,32 @@ const CashbackEditor = {
       rows.value = rows.value.filter((x) => x !== r);
     }
 
-    function addCategory(r, e) {
-      const id = e.target.value;
-      e.target.value = '';
-      if (id && !r.category_ids.includes(id)) r.category_ids.push(id);
-    }
     const catName = (id) => {
       const c = state.categories.find((x) => x.id === id);
       return c ? `${c.icon} ${categoryLabel(tree.value, c)}` : '?';
     };
+    // Выбранные категории для показа: целиком выбранный раздел (или всё сразу) — одним значком.
+    function chipsOf(r) {
+      const picked = new Set(r.category_ids);
+      const has = (ids) => ids.length && ids.every((id) => picked.has(id));
+      const all = [...tree.value.sections.flatMap((s) => s.items), ...tree.value.loose].map((c) => c.id);
+      if (has(all)) return [{ key: 'all', text: '✅ Все категории', ids: r.category_ids }];
+      const chips = [];
+      const covered = new Set();
+      for (const s of tree.value.sections) {
+        const ids = s.items.map((c) => c.id);
+        if (!has(ids)) continue;
+        chips.push({ key: s.group.id, text: `📂 ${groupLabel(tree.value, s.group)}`, ids });
+        ids.forEach((id) => covered.add(id));
+      }
+      for (const id of r.category_ids) if (!covered.has(id)) chips.push({ key: id, text: catName(id), ids: [id] });
+      return chips;
+    }
+    const unpick = (r, ids) => { r.category_ids = r.category_ids.filter((x) => !ids.includes(x)); };
+    const pickingFor = ref(null);
+    const cardGroups = computed(() => ACCOUNT_TYPES
+      .map((g) => ({ label: g.label, items: cards.value.filter((a) => typeOf(a).id === g.id) }))
+      .filter((g) => g.items.length));
 
     // Группы по картам; счета не из списка карт (например, ушедшие в архив) тоже показываем,
     // чтобы такие кэшбэки можно было увидеть и удалить.
@@ -125,7 +203,7 @@ const CashbackEditor = {
     return {
       month, rows, loading, busy, error, cards, tree, draft, byCard, LABELS,
       shift: (n) => { month.value = addMonths(month.value, n); },
-      copyPrevious, addRow, removeRow, addCategory, catName, save, monthLabel, groupLabel, categoryLabel,
+      copyPrevious, addRow, removeRow, chipsOf, unpick, pickingFor, cardGroups, save, monthLabel, groupLabel, categoryLabel,
     };
   },
   template: `
@@ -140,9 +218,7 @@ const CashbackEditor = {
           тогда при вводе траты приложение подскажет, какой картой выгоднее. Без привязки кэшбэк считается «на все покупки».</p>
 
         <div class="cb-add">
-          <select v-model="draft.account_id" aria-label="Карта">
-            <option v-for="a in cards" :key="a.id" :value="a.id">{{ a.icon }} {{ a.name }}</option>
-          </select>
+          <account-select v-model="draft.account_id" :groups="cardGroups" label="Карта"/>
           <input v-model="draft.label" list="cb-labels" placeholder="Категория в банке" aria-label="Категория в банке">
           <input v-model="draft.percent" inputmode="decimal" placeholder="%" class="cb-percent" aria-label="Процент">
           <button type="button" class="btn" @click="addRow"><icon name="plus"/> Добавить</button>
@@ -156,7 +232,7 @@ const CashbackEditor = {
         </div>
 
         <div v-for="g in byCard" :key="g.account.id" class="cb-card">
-          <div class="field-label">{{ g.account.icon }} {{ g.account.name }}</div>
+          <div class="field-label cb-card-head"><card-chip :account="g.account" size="sm"/> {{ g.account.name }}</div>
           <div v-for="(r, i) in g.rows" :key="r.id ?? i" class="cb-row">
             <div class="cb-row-top">
               <input v-model="r.label" list="cb-labels" aria-label="Категория в банке">
@@ -164,23 +240,16 @@ const CashbackEditor = {
               <button type="button" class="icon-btn" aria-label="Удалить кэшбэк" @click="removeRow(r)"><icon name="trash" :size="18"/></button>
             </div>
             <div class="cb-cats">
-              <span v-for="id in r.category_ids" :key="id" class="chip small">
-                {{ catName(id) }}
-                <button type="button" class="chip-x" aria-label="Убрать категорию" @click="r.category_ids = r.category_ids.filter(x => x !== id)">×</button>
+              <span v-for="ch in chipsOf(r)" :key="ch.key" class="chip small">
+                {{ ch.text }}
+                <button type="button" class="chip-x" aria-label="Убрать" @click="unpick(r, ch.ids)">×</button>
               </span>
               <span v-if="!r.category_ids.length" class="hint">на все покупки</span>
-              <select class="cb-cat-add" aria-label="Привязать категорию" @change="addCategory(r, $event)">
-                <option value="">+ категория</option>
-                <optgroup v-for="s in tree.sections" :key="s.group.id" :label="groupLabel(tree, s.group)">
-                  <option v-for="c in s.items" :key="c.id" :value="c.id">{{ c.icon }} {{ categoryLabel(tree, c) }}</option>
-                </optgroup>
-                <optgroup v-if="tree.loose.length" label="Без раздела">
-                  <option v-for="c in tree.loose" :key="c.id" :value="c.id">{{ c.icon }} {{ c.name }}</option>
-                </optgroup>
-              </select>
+              <button type="button" class="btn small" @click="pickingFor = r">+ категории</button>
             </div>
           </div>
         </div>
+        <category-checklist v-if="pickingFor" :tree="tree" v-model="pickingFor.category_ids" @close="pickingFor = null"/>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       </div>
       <template #footer>

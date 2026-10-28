@@ -6,7 +6,7 @@ import { categoryTree, groupLabel } from '../categories.js';
 import { Icon, Modal, MonthSwitcher } from '../components.js';
 import { ImportView } from './import.js';
 import { cashbackHint } from './cashback.js';
-import { CardChip } from '../cards.js';
+import { CardChip, AccountSelect } from '../cards.js';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -140,7 +140,7 @@ export const OperationsView = {
 const lastGroupKey = (kind) => `last-cat-group-${kind}`;
 
 export const TxEditor = {
-  components: { Modal, Icon },
+  components: { Modal, Icon, AccountSelect },
   props: { tx: Object },
   emits: ['close'],
   setup(props, { emit }) {
@@ -182,7 +182,28 @@ export const TxEditor = {
     function pick(c) {
       form.category_id = c.id;
       if (c.group_id) localSet(lastGroupKey(form.kind), c.group_id);
+      if (query.value) {
+        query.value = '';
+        open.clear();
+        if (c.group_id) open.add(c.group_id);
+      }
     }
+
+    // Поиск категории по первым буквам: сначала те, где слово начинается с введённого.
+    const query = ref('');
+    const found = computed(() => {
+      const q = query.value.trim().toLowerCase();
+      if (!q) return [];
+      const all = [...tree.value.sections.flatMap((s) => s.items), ...tree.value.loose];
+      const rank = (c) => {
+        const name = c.name.toLowerCase();
+        if (name.startsWith(q)) return 0;
+        if (name.split(/[\s,.\-–—()]+/).some((w) => w.startsWith(q))) return 1;
+        return name.includes(q) ? 2 : -1;
+      };
+      return all.map((c) => ({ c, r: rank(c) })).filter((x) => x.r >= 0).sort((a, b) => a.r - b.r).map((x) => x.c);
+    });
+    const pickFirstFound = () => { if (found.value.length) pick(found.value[0]); };
 
     // Счета в выпадающем списке — по тем же группам, что на главной.
     const accountGroups = computed(() => ACCOUNT_TYPES
@@ -289,7 +310,7 @@ export const TxEditor = {
     if (!state.accounts.some((a) => !a.archived)) toast('Сначала добавьте счёт на главной', 'error');
 
     return {
-      state, form, tree, selected, archivedSelected, open, toggleOpen, pick, accountGroups,
+      state, form, tree, selected, archivedSelected, open, toggleOpen, pick, accountGroups, query, found, pickFirstFound,
       readOnly, author, busy, error, warning, cashback, amountEl, save, remove, confirmDelete,
       groupLabel, title: readOnly ? 'Операция (просмотр)' : t ? 'Операция' : 'Новая операция',
     };
@@ -316,6 +337,22 @@ export const TxEditor = {
           <div v-if="form.kind !== 'transfer'">
             <div class="field-label">Категория</div>
             <div class="picker">
+              <label class="cat-search">
+                <icon name="search" :size="18"/>
+                <input v-model="query" type="search" placeholder="Поиск категории" aria-label="Поиск категории"
+                  autocomplete="off" enterkeyhint="done" @keydown.enter.prevent="pickFirstFound">
+              </label>
+              <template v-if="query.trim()">
+                <div v-if="found.length" class="cat-grid" role="radiogroup" aria-label="Найденные категории">
+                  <button v-for="c in found" :key="c.id" type="button" role="radio" :aria-checked="form.category_id===c.id"
+                    :class="['cat-opt', {selected: form.category_id===c.id}]" @click="pick(c)">
+                    <span v-if="tree.nums[c.id]" class="cat-num">{{ tree.nums[c.id] }}</span>
+                    <span class="cat-emoji" aria-hidden="true">{{ c.icon }}</span><span class="cat-name">{{ c.name }}</span>
+                  </button>
+                </div>
+                <p v-else class="hint">Ничего не нашлось</p>
+              </template>
+              <template v-else>
               <div v-if="archivedSelected" class="cat-grid">
                 <button type="button" class="cat-opt selected">
                   <span class="cat-emoji" aria-hidden="true">{{ archivedSelected.icon }}</span>
@@ -344,25 +381,18 @@ export const TxEditor = {
                   <span class="cat-emoji" aria-hidden="true">{{ c.icon }}</span><span class="cat-name">{{ c.name }}</span>
                 </button>
               </div>
+              </template>
             </div>
           </div>
 
           <div class="row-2">
             <label class="field">
               <span>{{ form.kind==='transfer' ? 'Откуда' : 'Счёт' }}</span>
-              <select v-model="form.account_id">
-                <optgroup v-for="g in accountGroups" :key="g.id" :label="g.label">
-                  <option v-for="a in g.items" :key="a.id" :value="a.id">{{ a.icon }} {{ a.name }}</option>
-                </optgroup>
-              </select>
+              <account-select v-model="form.account_id" :groups="accountGroups" :label="form.kind==='transfer' ? 'Откуда' : 'Счёт'"/>
             </label>
             <label v-if="form.kind==='transfer'" class="field">
               <span>Куда</span>
-              <select v-model="form.to_account_id">
-                <optgroup v-for="g in accountGroups" :key="g.id" :label="g.label">
-                  <option v-for="a in g.items" :key="a.id" :value="a.id">{{ a.icon }} {{ a.name }}</option>
-                </optgroup>
-              </select>
+              <account-select v-model="form.to_account_id" :groups="accountGroups" label="Куда"/>
             </label>
             <label v-else class="field">
               <span>Дата</span>

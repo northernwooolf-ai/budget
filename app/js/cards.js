@@ -1,5 +1,6 @@
 // Мини-карточки счетов: в цветах банка (определяется по названию счёта) или своя картинка.
-import { computed } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { Icon } from './components.js';
 
 // Названия банков, как их пишут в счетах и как их называет GigaChat на скриншотах.
 export const BANKS = {
@@ -72,4 +73,48 @@ export const CardChip = {
       <span v-if="account.card_last4" class="cc-last4">•• {{ account.card_last4 }}</span>
       <span class="cc-mir">МИР</span>
     </span>`,
+};
+
+// <account-select v-model="id" :groups="[{ label, items }]"/> — выбор счёта с карточками
+// вместо обычного списка (в системном списке телефона картинки не показать).
+export const AccountSelect = {
+  components: { CardChip, Icon },
+  props: { modelValue: String, groups: Array, label: String },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    const open = ref(false);
+    const current = computed(() => props.groups.flatMap((g) => g.items).find((a) => a.id === props.modelValue));
+    function choose(a) {
+      emit('update:modelValue', a.id);
+      open.value = false;
+    }
+    // Esc закрывает только список, а не окно под ним.
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      e.stopImmediatePropagation();
+      open.value = false;
+    };
+    watch(open, (v) => (v ? window.addEventListener('keydown', onKey, true) : window.removeEventListener('keydown', onKey, true)));
+    onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true));
+    return { open, current, choose };
+  },
+  template: `
+    <button type="button" class="acc-select" :aria-label="label" aria-haspopup="listbox" :aria-expanded="open" @click="open = true">
+      <card-chip v-if="current" :account="current" size="sm"/>
+      <span class="acc-select-name">{{ current?.name ?? 'Выберите' }}</span>
+      <icon name="down" :size="16"/>
+    </button>
+    <teleport to="body">
+      <div v-if="open" class="acc-select-backdrop" @click.self="open = false">
+        <div class="acc-select-menu" role="listbox" :aria-label="label">
+          <template v-for="g in groups" :key="g.label">
+            <div v-if="g.label && groups.length > 1" class="acc-select-group">{{ g.label }}</div>
+            <button v-for="a in g.items" :key="a.id" type="button" role="option" :aria-selected="a.id === modelValue"
+              :class="['acc-select-opt', { selected: a.id === modelValue }]" @click="choose(a)">
+              <card-chip :account="a" size="sm"/><span class="acc-select-name">{{ a.name }}</span>
+            </button>
+          </template>
+        </div>
+      </div>
+    </teleport>`,
 };
