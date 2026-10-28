@@ -212,9 +212,9 @@ export const CashbackCard = {
   },
   template: `
     <div class="card pad cashback-card">
-      <div class="card-head">
+      <div class="card-head nowrap-head">
         <h2>💳 Кэшбэк в {{ inMonth }}</h2>
-        <button class="btn" @click="editing = true">{{ best.length ? 'Изменить' : 'Выбрать кэшбэки' }}</button>
+        <button class="btn small" @click="editing = true">{{ best.length ? 'Изменить' : 'Выбрать' }}</button>
       </div>
       <p v-if="!best.length" class="hint">Отметьте, какие кэшбэки вы выбрали в банках в этом месяце, — здесь будет видно, какой картой что выгоднее покупать.</p>
       <ul v-else class="cb-best">

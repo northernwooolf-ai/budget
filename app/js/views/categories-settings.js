@@ -220,9 +220,10 @@ export const CategoriesSettings = {
             <span v-if="admin" class="drag-handle group-handle" title="Перетащите раздел вместе с категориями"><icon name="grip"/></span>
             <button class="section-toggle" :aria-expanded="!collapsed.has(s.group.id)" @click="toggle(s.group.id)">
               <icon name="down" :class="['chev', { closed: collapsed.has(s.group.id) }]" :size="18"/>
-              <span class="section-title">{{ groupLabel(tree, s.group) }}</span>
-              <span class="group-count">{{ s.items.length }}</span>
-              <span v-if="s.group.monthly_limit" class="section-limit">лимит {{ money(s.group.monthly_limit) }}</span>
+              <span class="section-text">
+                <span class="section-title">{{ groupLabel(tree, s.group) }} <span class="group-count">{{ s.items.length }}</span></span>
+                <span v-if="s.group.monthly_limit" class="section-limit">лимит {{ money(s.group.monthly_limit) }}</span>
+              </span>
             </button>
             <template v-if="admin">
               <button class="icon-btn" title="Добавить категорию в раздел" aria-label="Добавить категорию в раздел"
@@ -251,8 +252,7 @@ export const CategoriesSettings = {
       <template v-if="archived.length">
         <button class="group-head" :aria-expanded="showArchive" @click="showArchive = !showArchive">
           <icon name="down" :class="['chev', { closed: !showArchive }]" :size="18"/>
-          <span class="group-title muted">🗄 Архив</span>
-          <span class="group-count">{{ archived.length }}</span>
+          <span class="group-title muted">🗄 Архив <span class="group-count">{{ archived.length }}</span></span>
         </button>
         <div v-show="showArchive" class="list bordered">
           <div v-for="c in archived" :key="c.id" class="row muted">

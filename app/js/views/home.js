@@ -375,22 +375,20 @@ export const HomeView = {
         </div>
         <span :class="['hero', { negative: totals.hero < 0 }]">{{ money(totals.hero) }}</span>
         <span class="hint">Наличные и дебетовые карты{{ withDebts ? ' минус кредиты и долги' : '' }}</span>
-        <div class="capital-split">
-          <div><span class="stat-label">Вклады и инвестиции</span>
+        <div class="kv-list">
+          <div class="kv"><span>Вклады и инвестиции</span>
             <b :class="{ negative: totals.savings < 0 }">{{ money(totals.savings) }}</b></div>
-          <div><span class="stat-label">Нам должны</span><b>{{ money(totals.owedToUs) }}</b></div>
-          <div><span class="stat-label">Мы должны и кредиты</span>
+          <div class="kv"><span>Нам должны</span><b>{{ money(totals.owedToUs) }}</b></div>
+          <div class="kv"><span>Мы должны и кредиты</span>
             <b :class="{ negative: totals.weOwe > 0 }">{{ totals.weOwe > 0 ? '−' : '' }}{{ money(totals.weOwe) }}</b></div>
-        </div>
-        <div class="total-line">
-          <span class="muted">Всего с вкладами и долгами</span>
-          <b :class="{ negative: totals.total < 0 }">{{ money(totals.total) }}</b>
+          <div class="kv kv-total"><span>Всего с вкладами и долгами</span>
+            <b :class="{ negative: totals.total < 0 }">{{ money(totals.total) }}</b></div>
         </div>
         <div class="month-line">
-          <span class="muted">{{ monthLabel(state.month) }}:</span>
-          <span class="income">+{{ money(month.income) }}</span>
-          <span>−{{ money(month.expense) }}</span>
-          <span :class="month.diff < 0 ? 'negative' : 'income'">итог {{ month.diff > 0 ? '+' : '' }}{{ money(month.diff) }}</span>
+          <span class="month-name">{{ monthLabel(state.month) }}</span>
+          <span class="pill income">+{{ money(month.income) }}</span>
+          <span class="pill">−{{ money(month.expense) }}</span>
+          <span :class="['pill', month.diff < 0 ? 'negative' : 'income']">= {{ month.diff > 0 ? '+' : '' }}{{ money(month.diff) }}</span>
         </div>
       </div>
 
@@ -412,9 +410,7 @@ export const HomeView = {
       <div v-for="g in groups" :key="g.id" class="group">
         <button class="group-head" :aria-expanded="!collapsed.has(g.id)" @click="toggle(g.id)">
           <icon name="down" :class="['chev', { closed: collapsed.has(g.id) }]" :size="18"/>
-          <span class="group-title">{{ g.icon }} {{ g.label }}</span>
-          <span class="group-count">{{ g.items.length }}</span>
-          <span class="spacer"></span>
+          <span class="group-title"><span aria-hidden="true">{{ g.icon }}</span> {{ g.label }} <span class="group-count">{{ g.items.length }}</span></span>
           <span :class="['group-total', { negative: g.total < 0 }]">{{ money(g.total) }}</span>
         </button>
         <div v-show="!collapsed.has(g.id)" class="card list"
@@ -426,8 +422,7 @@ export const HomeView = {
       <div v-if="archived.length" class="group">
         <button class="group-head" :aria-expanded="showArchive" @click="showArchive = !showArchive">
           <icon name="down" :class="['chev', { closed: !showArchive }]" :size="18"/>
-          <span class="group-title muted">🗄 Архив</span>
-          <span class="group-count">{{ archived.length }}</span>
+          <span class="group-title muted">🗄 Архив <span class="group-count">{{ archived.length }}</span></span>
         </button>
         <div v-show="showArchive" class="card list">
           <account-row v-for="a in archived" :key="a.id" :account="a" archived @open="viewing = $event"/>

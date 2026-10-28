@@ -2,13 +2,17 @@ import { ref, reactive } from 'vue';
 import { api } from '../api.js';
 import { state, setupHousehold, signOut } from '../store.js';
 import { Icon } from '../components.js';
+import { localGet, localSet } from '../utils.js';
+
+const EMAIL_KEY = 'last-email';
 
 export const AuthView = {
   components: { Icon },
   setup() {
     const mode = ref('signin');
     const showPassword = ref(false);
-    const form = reactive({ email: '', password: '' });
+    // Почта последнего входа подставляется сама; пароль сохраняет и подставляет браузер.
+    const form = reactive({ email: localGet(EMAIL_KEY, ''), password: '' });
     const busy = ref(false);
     const error = ref('');
 
@@ -17,6 +21,7 @@ export const AuthView = {
       busy.value = true;
       try {
         const email = form.email.trim();
+        localSet(EMAIL_KEY, email);
         if (mode.value === 'signin') await api.signIn(email, form.password);
         else {
           const { signedIn } = await api.signUp(email, form.password);
@@ -44,12 +49,12 @@ export const AuthView = {
         </div>
         <label class="field">
           <span>Электронная почта</span>
-          <input v-model="form.email" type="email" autocomplete="email" required>
+          <input id="email" name="email" v-model="form.email" type="email" autocomplete="username" required>
         </label>
         <label class="field">
           <span>Пароль</span>
           <span class="password-box">
-            <input id="password" v-model="form.password" :type="showPassword ? 'text' : 'password'" minlength="6" required
+            <input id="password" name="password" v-model="form.password" :type="showPassword ? 'text' : 'password'" minlength="6" required
               :autocomplete="mode==='signin' ? 'current-password' : 'new-password'">
             <button type="button" class="icon-btn" :aria-label="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
               :title="showPassword ? 'Скрыть пароль' : 'Показать пароль'" @click="showPassword = !showPassword">

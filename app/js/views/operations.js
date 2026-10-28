@@ -51,12 +51,16 @@ export const OperationsView = {
       const acc = accountById.value[t.account_id];
       if (t.kind === 'transfer') {
         const to = accountById.value[t.to_account_id];
-        return { icon: '🔄', title: 'Перевод', sub: [`${acc?.name ?? '?'} → ${to?.name ?? '?'}`, t.note] };
+        return { icon: '🔄', title: 'Перевод', sub: [`${acc?.name ?? '?'} → ${to?.name ?? '?'}`, t.note], acc, to };
       }
-      return { icon: cat?.icon ?? '❔', title: cat?.name ?? 'Без категории', sub: [t.note, acc?.name] };
+      return { icon: cat?.icon ?? '❔', title: cat?.name ?? 'Без категории', sub: [t.note, acc?.name], acc };
     }
 
-    return { state, importing, totals, groups, view, money, dayLabel };
+    // Вид «как в таблице»: расход слева, переводы посередине, доход справа — тип виден по месту суммы.
+    const listView = ref(localGet('ops-view', 'table'));
+    watch(listView, (v) => localSet('ops-view', v));
+
+    return { state, importing, totals, groups, view, listView, money, dayLabel };
   },
   template: `
     <section class="page">
@@ -74,6 +78,17 @@ export const OperationsView = {
           <span :class="['stat-value', totals.diff < 0 ? 'negative' : 'income']">{{ totals.diff > 0 ? '+' : '' }}{{ money(totals.diff) }}</span></div>
       </div>
 
+      <div class="view-bar">
+        <span v-if="listView === 'table'" class="view-legend">
+          <span class="negative">← расходы</span><span>переводы</span><span class="income">доходы →</span>
+        </span>
+        <span v-else></span>
+        <div class="segmented mini" role="radiogroup" aria-label="Вид списка">
+          <button :class="{ active: listView === 'table' }" @click="listView = 'table'">Как в таблице</button>
+          <button :class="{ active: listView === 'list' }" @click="listView = 'list'">Обычный</button>
+        </div>
+      </div>
+
       <p v-if="state.txLoading && !groups.length" class="empty">Загрузка…</p>
       <div v-else-if="!groups.length" class="empty">
         <p>В этом месяце операций пока нет.</p>
@@ -85,7 +100,27 @@ export const OperationsView = {
           <span>{{ dayLabel(g.date) }}</span>
           <span v-if="g.expense" class="muted">−{{ money(g.expense) }}</span>
         </div>
-        <div class="card list">
+        <div v-if="listView === 'table'" class="card list">
+          <button v-for="t in g.items" :key="t.id" :class="['tx3', t.kind]" @click="$emit('edit', t)">
+            <template v-if="t.kind === 'expense'">
+              <span class="z-left tx3-amount negative">−{{ money(t.amount) }}</span>
+              <span class="z-mid"><span class="tx3-cat">{{ view(t).icon }} {{ view(t).title }}</span><small v-if="t.note">{{ t.note }}</small></span>
+              <span class="z-right tx3-acc"><span aria-hidden="true">{{ view(t).acc?.icon }}</span> {{ view(t).acc?.name ?? '?' }}</span>
+            </template>
+            <template v-else-if="t.kind === 'income'">
+              <span class="z-left tx3-acc"><span aria-hidden="true">{{ view(t).acc?.icon }}</span> {{ view(t).acc?.name ?? '?' }}</span>
+              <span class="z-mid"><span class="tx3-cat">{{ view(t).icon }} {{ view(t).title }}</span><small v-if="t.note">{{ t.note }}</small></span>
+              <span class="z-right tx3-amount income">+{{ money(t.amount) }}</span>
+            </template>
+            <template v-else>
+              <span class="z-left tx3-acc"><span aria-hidden="true">{{ view(t).acc?.icon }}</span> {{ view(t).acc?.name ?? '?' }}</span>
+              <span class="z-mid"><span class="tx3-amount">{{ money(t.amount) }}</span><small class="tx3-arrow">перевод →</small>
+                <small v-if="t.note">{{ t.note }}</small></span>
+              <span class="z-right tx3-acc"><span aria-hidden="true">{{ view(t).to?.icon }}</span> {{ view(t).to?.name ?? '?' }}</span>
+            </template>
+          </button>
+        </div>
+        <div v-else class="card list">
           <button v-for="t in g.items" :key="t.id" class="tx-row" @click="$emit('edit', t)">
             <span class="tx-icon" aria-hidden="true">{{ view(t).icon }}</span>
             <span class="tx-main">

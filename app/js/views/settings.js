@@ -5,10 +5,11 @@ import { isoDate, addMonths, downloadFile } from '../utils.js';
 import { Icon } from '../components.js';
 import { CategoriesSettings } from './categories-settings.js';
 import { AppearanceSettings } from './appearance-settings.js';
+import { SecuritySettings } from './lock-screen.js';
 import { APP_VERSION } from '../config.js';
 
 export const SettingsView = {
-  components: { Icon, CategoriesSettings, AppearanceSettings },
+  components: { Icon, CategoriesSettings, AppearanceSettings, SecuritySettings },
   setup() {
     const admin = computed(isAdmin);
     const myName = ref(state.me.display_name);
@@ -136,6 +137,8 @@ export const SettingsView = {
       <categories-settings/>
 
       <appearance-settings/>
+
+      <security-settings/>
 
       <div v-if="admin" class="card pad stack">
         <h2>Распознавание скриншотов</h2>
