@@ -1,16 +1,18 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610290222';
-import { state, isAdmin, updateMyName, updateHouseholdName, signOut, toast } from '../store.js?v=2610290222';
-import { isoDate, addMonths, downloadFile } from '../utils.js?v=2610290222';
-import { Icon } from '../components.js?v=2610290222';
-import { CategoriesSettings } from './categories-settings.js?v=2610290222';
-import { AppearanceSettings } from './appearance-settings.js?v=2610290222';
-import { SecuritySettings } from './lock-screen.js?v=2610290222';
-import { APP_VERSION } from '../config.js?v=2610290222';
+import { api } from '../api.js?v=2610290224';
+import { state, isAdmin, updateMyName, updateHouseholdName, signOut, toast } from '../store.js?v=2610290224';
+import { isoDate, addMonths, downloadFile } from '../utils.js?v=2610290224';
+import { Icon } from '../components.js?v=2610290224';
+import { CategoriesSettings } from './categories-settings.js?v=2610290224';
+import { AppearanceSettings } from './appearance-settings.js?v=2610290224';
+import { SecuritySettings } from './lock-screen.js?v=2610290224';
+import { AccountEditor } from './home.js?v=2610290224';
+import { APP_VERSION } from '../config.js?v=2610290224';
 
 export const SettingsView = {
-  components: { Icon, CategoriesSettings, AppearanceSettings, SecuritySettings },
+  components: { Icon, CategoriesSettings, AppearanceSettings, SecuritySettings, AccountEditor },
   setup() {
+    const addingAccount = ref(null);
     const admin = computed(isAdmin);
     const myName = ref(state.me.display_name);
     const familyName = ref(state.household.name);
@@ -87,7 +89,7 @@ export const SettingsView = {
     }
 
     return {
-      state, admin, myName, familyName, exporting, partnerMode, inviteCode, copyCode, exportCsv, check, checkRecognizer,
+      state, admin, addingAccount, myName, familyName, exporting, partnerMode, inviteCode, copyCode, exportCsv, check, checkRecognizer,
       updateMyName, updateHouseholdName, signOut, demoSwitch: () => api.demoSwitchUser(), APP_VERSION,
     };
   },
@@ -133,6 +135,13 @@ export const SettingsView = {
           <button class="btn" :disabled="myName.trim() === state.me.display_name">Сохранить</button>
         </form>
       </div>
+
+      <div v-if="admin" class="card pad stack">
+        <h2>Счета</h2>
+        <p class="hint">Наличные, карты, вклады, долги. Изменить или убрать в архив счёт можно, нажав на него на главной.</p>
+        <div><button class="btn" @click="addingAccount = {}"><icon name="plus"/> Добавить счёт</button></div>
+      </div>
+      <account-editor v-if="addingAccount" :account="addingAccount" @close="addingAccount = null"/>
 
       <categories-settings/>
 

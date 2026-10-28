@@ -1,7 +1,7 @@
 // Диаграммы отчётов: кольцо (доли) и динамика по месяцам (столбцы или линии).
 import { ref, computed, watch } from 'vue';
 // Графики показывают итоги — без копеек.
-import { rub as money, monthShort, monthLabel } from './utils.js?v=2610290222';
+import { rub as money, monthShort, monthLabel } from './utils.js?v=2610290224';
 
 // Цвета частей в фиксированном порядке; девятая и дальше части уходят в «Остальное».
 export const SLICE_COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)'];

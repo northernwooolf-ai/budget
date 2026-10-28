@@ -1,12 +1,11 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290222';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290222';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290222';
-import { categoryTree, groupLabel } from '../categories.js?v=2610290222';
-import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290222';
-import { ImportView } from './import.js?v=2610290222';
-import { cashbackHint } from './cashback.js?v=2610290222';
-import { CardChip, AccountSelect } from '../cards.js?v=2610290222';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290224';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290224';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290224';
+import { categoryTree, groupLabel } from '../categories.js?v=2610290224';
+import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290224';
+import { cashbackHint } from './cashback.js?v=2610290224';
+import { CardChip, AccountSelect } from '../cards.js?v=2610290224';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -20,11 +19,10 @@ export function useLookups() {
 export const ownerOf = (t) => t.spent_by ?? t.created_by;
 
 export const OperationsView = {
-  components: { Icon, MonthSwitcher, ImportView, CardChip },
+  components: { Icon, MonthSwitcher, CardChip },
   emits: ['edit'],
   setup() {
     const { categoryById, accountById } = useLookups();
-    const importing = ref(false);
     const list = computed(() => state.transactions);
 
     const totals = computed(() => {
@@ -72,16 +70,14 @@ export const OperationsView = {
       { id: 'income', label: 'доходы', table: 'доходы →', cls: 'income' },
     ];
 
-    return { state, importing, totals, groups, view, listView, kindFilter, toggleKind, KINDS, money, rub, dayLabel };
+    return { state, totals, groups, view, listView, kindFilter, toggleKind, KINDS, money, rub, dayLabel };
   },
   template: `
     <section class="page">
       <header class="page-head">
         <h1 class="page-title">Операции</h1>
-        <button id="import-screenshot" class="btn" @click="importing = true"><span aria-hidden="true">📷</span> Со скриншота</button>
         <month-switcher/>
       </header>
-      <import-view v-if="importing" @close="importing = false"/>
 
       <div class="summary">
         <div class="stat"><span class="stat-label">Доходы</span><span class="stat-value income">{{ rub(totals.income) }}</span></div>

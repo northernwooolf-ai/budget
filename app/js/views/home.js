@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610290222';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610290222';
-import { limitStatus } from '../categories.js?v=2610290222';
-import { expanded, toggleIn } from '../ui-state.js?v=2610290222';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610290222';
-import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610290222';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610290222';
-import { useLookups } from './operations.js?v=2610290222';
-import { CashbackCard } from './cashback.js?v=2610290222';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610290222';
+import { api } from '../api.js?v=2610290224';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610290224';
+import { limitStatus } from '../categories.js?v=2610290224';
+import { expanded, toggleIn } from '../ui-state.js?v=2610290224';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610290224';
+import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610290224';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610290224';
+import { useLookups } from './operations.js?v=2610290224';
+import { CashbackCard } from './cashback.js?v=2610290224';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610290224';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -52,7 +52,7 @@ const AccountRow = {
     </div>`,
 };
 
-const AccountEditor = {
+export const AccountEditor = {
   components: { Modal, EmojiPicker, CardChip },
   props: { account: Object },
   emits: ['close'],
@@ -402,15 +402,12 @@ export const HomeView = {
     <section class="page">
       <header class="page-head">
         <h1 class="page-title">Главная</h1>
-        <div v-if="admin" class="btn-row">
-          <drag-lock-button/>
-          <button class="btn" @click="editing = {}"><icon name="plus"/> Счёт</button>
-        </div>
+        <drag-lock-button v-if="admin"/>
       </header>
 
       <div v-if="admin && needsStart" class="card pad start-hint">
         <b>С чего начать</b>
-        <p class="hint">Укажите, сколько денег сейчас на каждом счёте, и добавьте свои карты, вклады и долги кнопкой «+ Счёт».</p>
+        <p class="hint">Укажите, сколько денег сейчас на каждом счёте, и добавьте свои карты, вклады и долги: «Настройки» → «Счета» → «Добавить счёт».</p>
         <button class="btn primary" @click="startOpen = true">Указать стартовые остатки</button>
       </div>
 

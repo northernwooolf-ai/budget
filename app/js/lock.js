@@ -2,7 +2,7 @@
 // но открыть приложение можно только после подтверждения на устройстве.
 // Использует встроенную в браузер проверку (WebAuthn). Включается на каждом устройстве отдельно.
 import { reactive } from 'vue';
-import { localGet, localSet } from './utils.js?v=2610290222';
+import { localGet, localSet } from './utils.js?v=2610290224';
 
 const KEY = 'lock-credential';
 const AWAY_MS = 60_000; // через минуту в фоне приложение снова закрывается
