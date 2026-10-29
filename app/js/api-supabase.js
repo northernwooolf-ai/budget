@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610291514';
-import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610291514';
-import { pick } from './utils.js?v=2610291514';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610291841';
+import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610291841';
+import { pick } from './utils.js?v=2610291841';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -45,6 +45,10 @@ async function invokeFunction(name, body) {
   if (!error) return data;
   let message = error.message;
   try { message = (await error.context.json()).error ?? message; } catch { /* ответа нет */ }
+  // Старая версия функции умеет только скриншоты: диктовка и помощник требуют обновить её код.
+  if (message === 'Не передано изображение' && !body.image) {
+    message = 'Функцию recognize в Supabase нужно обновить: вставьте новый код и нажмите Deploy';
+  }
   if (/failed to send a request/i.test(message)) {
     message = 'Функция распознавания не отвечает. Проверьте, что она установлена в Supabase под именем recognize';
   }
@@ -135,7 +139,9 @@ export default {
   deleteCashback: (id) => remove('cashbacks', id),
 
   // Распознавание скриншота банка (серверная функция recognize → GigaChat).
+  // Та же функция разбирает надиктованный текст ({ text }) и отвечает на вопросы помощнику ({ chat }).
   recognize: (body) => invokeFunction('recognize', body),
+  ask: (body) => invokeFunction('recognize', body),
   checkRecognizer: () => invokeFunction('recognize', { check: true }),
 
   // Изменения, сделанные вторым человеком, приходят сразу.

@@ -110,7 +110,7 @@ body {
 h1, h2 { margin: 0; line-height: 1.2; }
 h1 { font-size: 1.5rem; }
 h2 { font-size: 1.05rem; }
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .muted { color: var(--muted); }
@@ -252,11 +252,11 @@ button { cursor: pointer; }
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .field > span, .field-label { font-size: .85rem; color: var(--text-2); font-weight: 500; }
 .field-label { margin-bottom: 6px; }
-.field input, .field select {
+.field input, .field select, .field textarea {
   width: 100%; min-height: 44px; padding: 8px 12px;
   border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
 }
-.field input:focus, .field select:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 .check { display: flex; align-items: center; gap: 8px; }
 .check input { width: 20px; height: 20px; accent-color: var(--primary); }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -882,3 +882,50 @@ button.plate { -webkit-appearance: none; appearance: none; }
 }
 .toast.error { background: #8f1d14; }
 @media (min-width: 900px) { .toast { bottom: 24px; } }
+
+/* ---------- Заголовок главной: несколько кнопок справа ---------- */
+.head-actions { display: flex; align-items: center; gap: 8px; }
+.nav .nav-add + .nav-add { margin-top: 6px; }
+
+/* ---------- Упрощённый вид: деньги и кэшбэки прилипают к верху вместе ---------- */
+.simple-top {
+  position: sticky; top: 0; z-index: 5; display: flex; flex-direction: column; gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 6px) 0 8px; margin-top: -6px; background: var(--bg);
+}
+.simple-top .cb-best { max-height: 38vh; overflow: hidden auto; }
+.shell.simple .main { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+@media (min-width: 900px) { .shell.simple .main { margin: 0 auto; } }
+
+/* ---------- Диктовка ---------- */
+.drop-zone.listening { border-color: var(--negative); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgb(220 60 60 / .18); } }
+@media (prefers-reduced-motion: reduce) { .drop-zone.listening { animation: none; } }
+
+/* ---------- Помощник ---------- */
+.chat-modal .modal { height: 92vh; }
+@media (min-width: 640px) { .chat-modal .modal { height: min(720px, 92vh); } }
+.chat-modal .modal-body { flex: 1; }
+.chat { display: flex; flex-direction: column; gap: 10px; }
+.chat-suggest { display: flex; flex-wrap: wrap; gap: 8px; }
+.chat-suggest .chip { text-align: left; color: var(--text); }
+.bubble {
+  max-width: 88%; padding: 10px 14px; border-radius: 16px; line-height: 1.4;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.bubble.user { align-self: flex-end; background: var(--primary); color: var(--primary-ink); border-bottom-right-radius: 4px; }
+.bubble.assistant { align-self: flex-start; background: var(--surface-2); color: var(--text); border-bottom-left-radius: 4px; }
+.bubble.typing { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+.bubble.typing .spinner { width: 16px; height: 16px; border-width: 2px; }
+.chat-clear { align-self: center; }
+.chat-form { display: flex; align-items: center; gap: 8px; width: 100%; }
+.chat-form input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+}
+.chat-form input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.chat-form .btn, .chat-form .mic-btn { flex: none; width: 44px; height: 44px; padding: 0; justify-content: center; }
+.mic-btn { flex: none; font-size: 1.25rem; border: 1px solid var(--border); }
+.mic-btn.listening { border-color: var(--negative); animation: pulse 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mic-btn.listening { animation: none; } }
+.field textarea { resize: vertical; line-height: 1.4; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--primary); font-weight: 600; text-decoration: underline; }

@@ -1,12 +1,13 @@
-// Загрузка скриншотов из банка: GigaChat находит операции, вы проверяете и добавляете.
+// Операции со скриншотов из банка или надиктованные голосом: GigaChat находит операции, вы проверяете и добавляете.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610291514';
-import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610291514';
-import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610291514';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610291514';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610291514';
-import { Icon, Modal } from '../components.js?v=2610291514';
-import { bankKey } from '../cards.js?v=2610291514';
+import { api } from '../api.js?v=2610291841';
+import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610291841';
+import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610291841';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610291841';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610291841';
+import { Icon, Modal } from '../components.js?v=2610291841';
+import { bankKey } from '../cards.js?v=2610291841';
+import { speechSupported, listen } from '../speech.js?v=2610291841';
 
 // ---------- Память: какой магазин в какую категорию, какой банк на какой счёт ----------
 
@@ -58,8 +59,10 @@ async function prepareImage(file) {
 
 export const ImportView = {
   components: { Modal, Icon },
+  props: { mode: { type: String, default: 'shot' } }, // shot — скриншоты, voice — диктовка
   emits: ['close'],
   setup(props, { emit }) {
+    const voice = props.mode === 'voice';
     const admin = isAdmin();
     const step = ref('pick');        // pick → work → review
     const progress = ref('');
@@ -87,7 +90,8 @@ export const ImportView = {
         kind: op.direction,
         note: op.description,
         category_id: valid(remembered) ? remembered : valid(op.category_id) ? op.category_id : null,
-        account_id: guessAccount(bank, state.me.user_id),
+        // Счёт, названный в диктовке, если такой есть; иначе — по банку скриншота.
+        account_id: state.accounts.some((a) => a.id === op.account_id && !a.archived) ? op.account_id : guessAccount(bank, state.me.user_id),
         spent_by: state.me.user_id,
         bank,
       });
@@ -116,6 +120,52 @@ export const ImportView = {
       await loadExisting();
       for (const r of found) if (isDuplicate(r)) r.include = false;
       step.value = rows.value.length || failures.value.length ? 'review' : 'pick';
+    }
+
+    // ---------- Диктовка ----------
+    const spoken = ref('');
+    const listening = ref(false);
+    let stop = null;
+
+    function startListening() {
+      error.value = '';
+      spoken.value = '';
+      listening.value = true;
+      stop = listen({
+        onText: (text) => { spoken.value = text; },
+        onEnd: (err) => {
+          listening.value = false;
+          stop = null;
+          if (err) error.value = err;
+          else if (spoken.value) recognizeText();
+        },
+      });
+    }
+    const stopListening = () => stop?.();
+    onBeforeUnmount(stopListening);
+
+    async function recognizeText() {
+      const text = spoken.value.trim();
+      if (!text) return (error.value = 'Скажите или напишите, что купили и на сколько');
+      error.value = '';
+      step.value = 'work';
+      progress.value = 'Разбираю, что вы сказали…';
+      failures.value = [];
+      const categories = state.categories.filter((c) => !c.archived).map((c) => ({ id: c.id, name: c.name, kind: c.kind }));
+      const accounts = state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name, type: a.type }));
+      const found = [];
+      try {
+        const result = await api.recognize({ text, today: today(), categories, accounts });
+        for (const op of result.operations) found.push(makeRow(op, null));
+        if (!found.length) failures.value.push(`Не нашёл операций в «${text}». Назовите, что купили и сумму`);
+      } catch (e) {
+        failures.value.push(e.message);
+      }
+      rows.value = [...rows.value, ...found];
+      await loadExisting();
+      for (const r of found) if (isDuplicate(r)) r.include = false;
+      spoken.value = '';
+      step.value = 'review';
     }
 
     async function loadExisting() {
@@ -178,7 +228,7 @@ export const ImportView = {
     // Вставка скриншота из буфера (Ctrl+V) на компьютере.
     function onPaste(e) {
       const files = [...(e.clipboardData?.files ?? [])];
-      if (files.length && step.value !== 'work') { e.preventDefault(); recognizeFiles(files); }
+      if (!voice && files.length && step.value !== 'work') { e.preventDefault(); recognizeFiles(files); }
     }
     onMounted(() => document.addEventListener('paste', onPaste));
     onBeforeUnmount(() => document.removeEventListener('paste', onPaste));
@@ -188,13 +238,32 @@ export const ImportView = {
     return {
       state, admin, step, progress, failures, rows, busy, error, fileInput, trees, accountGroups,
       selected, total, isDuplicate, setKind, save, onFiles, money, groupLabel, categoryLabel,
+      voice, spoken, listening, speechSupported, startListening, stopListening, recognizeText,
     };
   },
   template: `
-    <modal title="Операции со скриншота" class="wide" @close="$emit('close')">
+    <modal :title="voice ? 'Операции голосом' : 'Операции со скриншота'" class="wide" @close="$emit('close')">
       <input ref="fileInput" type="file" accept="image/*" multiple hidden @change="onFiles">
 
-      <div v-if="step === 'pick'" class="import-pick">
+      <div v-if="step === 'pick' && voice" class="import-pick">
+        <p v-if="rows.length" class="hint">Уже найдено операций: {{ rows.length }}. Надиктуйте ещё — они добавятся к списку.
+          <button type="button" class="link-btn" @click="step = 'review'">Вернуться к списку</button></p>
+        <button v-if="speechSupported" type="button" :class="['drop-zone', { listening }]"
+          @click="listening ? stopListening() : startListening()">
+          <span class="drop-icon" aria-hidden="true">{{ listening ? '🔴' : '🎙️' }}</span>
+          <b>{{ listening ? 'Слушаю… нажмите, чтобы закончить' : 'Нажмите и скажите' }}</b>
+          <span class="hint">Например: «Купил еды в Пятёрочке с дебетовой Тинькофф на 392 рубля»</span>
+        </button>
+        <label class="field">
+          <span>{{ speechSupported ? 'Или напишите' : 'Скажите через микрофон на клавиатуре или напишите' }}</span>
+          <textarea v-model="spoken" rows="3" maxlength="2000" :readonly="listening"
+            placeholder="Вчера заправился на 2500 с кредитки Сбера, сегодня кофе 250 наличными"></textarea>
+        </label>
+        <p class="hint">Можно несколько операций сразу. Текст отправляется в GigaChat, чтобы разобрать сумму, карту и категорию.</p>
+        <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+      </div>
+
+      <div v-else-if="step === 'pick'" class="import-pick">
         <button class="drop-zone" @click="fileInput.click()">
           <span class="drop-icon" aria-hidden="true">📷</span>
           <b>Выберите скриншоты из банка</b>
@@ -207,7 +276,7 @@ export const ImportView = {
       <div v-else-if="step === 'work'" class="import-work" role="status">
         <span class="spinner" aria-hidden="true"></span>
         <b>{{ progress }}</b>
-        <span class="hint">Обычно 5–15 секунд на один скриншот</span>
+        <span class="hint">{{ voice ? 'Обычно несколько секунд' : 'Обычно 5–15 секунд на один скриншот' }}</span>
       </div>
 
       <div v-else class="stack">
@@ -250,7 +319,8 @@ export const ImportView = {
           </div>
         </div>
 
-        <button class="btn ghost" @click="fileInput.click()"><icon name="plus"/> Ещё скриншот</button>
+        <button v-if="voice" class="btn ghost" @click="step = 'pick'"><icon name="plus"/> Надиктовать ещё</button>
+        <button v-else class="btn ghost" @click="fileInput.click()"><icon name="plus"/> Ещё скриншот</button>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       </div>
 
@@ -259,6 +329,7 @@ export const ImportView = {
           {{ selected.length }} шт. · {{ total >= 0 ? '−' : '+' }}{{ money(Math.abs(total)) }}</span>
         <span class="spacer"></span>
         <button type="button" class="btn ghost" @click="$emit('close')">Отмена</button>
+        <button v-if="step === 'pick' && voice && !listening && spoken.trim()" type="button" class="btn primary" @click="recognizeText">Разобрать</button>
         <button v-if="step === 'review'" type="button" class="btn primary" :disabled="busy || !selected.length" @click="save">
           {{ busy ? 'Добавляю…' : 'Добавить выбранные' }}</button>
       </template>

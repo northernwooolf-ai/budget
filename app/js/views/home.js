@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610291514';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610291514';
-import { limitStatus } from '../categories.js?v=2610291514';
-import { expanded, toggleIn } from '../ui-state.js?v=2610291514';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610291514';
-import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610291514';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610291514';
-import { useLookups } from './operations.js?v=2610291514';
-import { CashbackCard } from './cashback.js?v=2610291514';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610291514';
+import { api } from '../api.js?v=2610291841';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610291841';
+import { limitStatus } from '../categories.js?v=2610291841';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610291841';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610291841';
+import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610291841';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610291841';
+import { useLookups } from './operations.js?v=2610291841';
+import { CashbackCard } from './cashback.js?v=2610291841';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610291841';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -21,7 +21,7 @@ function creditInfo(a) {
 
 const AccountRow = {
   components: { Icon, ConfirmButton, CardChip },
-  props: { account: Object, archived: Boolean },
+  props: { account: Object, archived: Boolean, plain: Boolean }, // plain — без перетаскивания и кнопок (упрощённый вид)
   emits: ['open'],
   setup(props) {
     const balance = computed(() => balanceOf(props.account));
@@ -34,7 +34,7 @@ const AccountRow = {
   },
   template: `
     <div :class="['row', 's-item', { muted: archived }]">
-      <span v-if="admin && !archived" class="drag-handle" title="Перетащите, чтобы поменять порядок"><icon name="grip"/></span>
+      <span v-if="admin && !archived && !plain" class="drag-handle" title="Перетащите, чтобы поменять порядок"><icon name="grip"/></span>
       <button class="row-main" @click="$emit('open', account)">
         <card-chip :account="account" size="md"/>
         <span class="tx-main">
@@ -43,7 +43,7 @@ const AccountRow = {
         </span>
         <span :class="['tx-amount', { negative: balance < 0 }]">{{ money(balance) }}</span>
       </button>
-      <template v-if="!admin"></template>
+      <template v-if="!admin || plain"></template>
       <confirm-button v-else-if="!archived" label="Убрать в архив" confirm-text="В архив?" @confirm="archive(true)"/>
       <template v-else>
         <button class="icon-btn" title="Вернуть из архива" aria-label="Вернуть из архива" @click="archive(false)"><icon name="undo" :size="18"/></button>
@@ -348,6 +348,9 @@ export const HomeView = {
       const items = active.value.filter((a) => typeOf(a).id === t.id).sort(bySort);
       return { ...t, items, total: items.reduce((s, a) => s + balanceOf(a), 0) };
     }).filter((g) => g.items.length));
+    // Упрощённый вид: наличные, дебетовые и кредитные карты подряд, в том же порядке, без разделителей.
+    const simpleAccounts = computed(() => groups.value
+      .filter((g) => ['cash', 'debit', 'credit'].includes(g.id)).flatMap((g) => g.items));
 
     // «С учётом кредитов» — вычитать ли долги из доступных денег.
     const withDebts = ref(localGet(DEBTS_KEY) === '1');
@@ -395,15 +398,34 @@ export const HomeView = {
 
     return {
       state, editing, viewing, startOpen, needsStart, collapsed, showArchive, toggle, groups, archived, totals, withDebts, details, month, alerts,
-      editAccount, reorder, money, rub, monthLabel, Math, admin: computed(isAdmin),
+      editAccount, reorder, money, rub, monthLabel, Math, admin: computed(isAdmin), simpleView, simpleAccounts,
     };
   },
   template: `
     <section class="page">
       <header class="page-head">
         <h1 class="page-title">Главная</h1>
-        <drag-lock-button v-if="admin"/>
+        <div class="head-actions">
+          <button type="button" class="btn small" :aria-pressed="simpleView" @click="simpleView = !simpleView">
+            {{ simpleView ? 'Обычный вид' : 'Упрощённый вид' }}</button>
+          <drag-lock-button v-if="admin && !simpleView"/>
+        </div>
       </header>
+
+      <!-- Упрощённый вид: доступные деньги и кэшбэки прилипают к верху, ниже — карты и наличные. -->
+      <template v-if="simpleView">
+        <div class="simple-top">
+          <div class="plate money-plate" role="status">
+            <span class="money-plate-label">Доступные деньги</span>
+            <b :class="{ negative: totals.available < 0 }">{{ rub(totals.available) }}</b>
+          </div>
+          <cashback-card/>
+        </div>
+        <div v-if="simpleAccounts.length" class="card list">
+          <account-row v-for="a in simpleAccounts" :key="a.id" :account="a" plain @open="viewing = $event"/>
+        </div>
+      </template>
+      <template v-else>
 
       <div v-if="admin && needsStart" class="card pad start-hint">
         <b>С чего начать</b>
@@ -491,6 +513,7 @@ export const HomeView = {
         </div>
         <p v-show="showArchive" class="hint">Счета в архиве не учитываются в сводке, но вся их история сохранена.</p>
       </div>
+      </template>
 
       <account-statement v-if="viewing" :account="viewing" @close="viewing = null"
         @edit="$emit('edit', $event)" @edit-account="editAccount"/>

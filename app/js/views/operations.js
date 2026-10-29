@@ -1,11 +1,11 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610291514';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610291514';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610291514';
-import { categoryTree, groupLabel } from '../categories.js?v=2610291514';
-import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610291514';
-import { cashbackHint } from './cashback.js?v=2610291514';
-import { CardChip, AccountSelect } from '../cards.js?v=2610291514';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610291841';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610291841';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610291841';
+import { categoryTree, groupLabel } from '../categories.js?v=2610291841';
+import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610291841';
+import { cashbackHint } from './cashback.js?v=2610291841';
+import { CardChip, AccountSelect } from '../cards.js?v=2610291841';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {

@@ -3,8 +3,8 @@
 import {
   friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS,
   DEFAULT_ACCOUNTS, DEFAULT_CATEGORY_GROUPS, DEFAULT_LOOSE_CATEGORIES,
-} from './api-common.js?v=2610291514';
-import { pick, isoDate, localGet, localSet } from './utils.js?v=2610291514';
+} from './api-common.js?v=2610291841';
+import { pick, isoDate, localGet, localSet } from './utils.js?v=2610291841';
 
 const KEY = 'budget-demo-db-v3';
 const PARTNER_ID = 'demo-partner';
@@ -358,6 +358,21 @@ export default {
   async recognize(body) {
     await new Promise((r) => setTimeout(r, 1200));
     const today = body.today, cat = (name) => body.categories.find((c) => c.name === name)?.id ?? null;
+    if (typeof body.text === 'string') {
+      // Надиктованный текст: берём первую сумму и угадываем карту по словам.
+      const amount = Number(body.text.match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(',', '.') ?? 0);
+      const words = body.text.toLowerCase();
+      const account = body.accounts.find((a) => words.includes(a.name.toLowerCase().split(' ')[0].slice(0, 5))) ?? null;
+      const income = /зарплат|получил|вернули/.test(words);
+      return {
+        bank: null,
+        operations: amount ? [{
+          date: today, time: null, amount, direction: income ? 'income' : 'expense',
+          description: body.text.slice(0, 60), category_id: income ? null : cat('Еда домой'), account_id: account?.id ?? null,
+        }] : [],
+        rejected: 0,
+      };
+    }
     return {
       bank: 'Т-Банк',
       operations: [
@@ -367,6 +382,12 @@ export default {
         { date: today, time: '08:00', amount: 5000, direction: 'income', description: 'Перевод от Андрея', category_id: null },
       ],
     };
+  },
+
+  async ask(body) {
+    await new Promise((r) => setTimeout(r, 900));
+    const lines = body.context.split('\n').length;
+    return { answer: `Это демо-режим: GigaChat здесь не подключён. В настоящем приложении он ответит на «${body.chat.at(-1).content}» по данным бюджета (сейчас передано бы ${lines} строк сводки).` };
   },
 
   subscribe(cb) {

@@ -1,11 +1,11 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610291514';
-import { state } from '../store.js?v=2610291514';
-import { expanded, toggleIn } from '../ui-state.js?v=2610291514';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610291514';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610291514';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610291514';
-import { Icon, MonthSwitcher } from '../components.js?v=2610291514';
+import { api } from '../api.js?v=2610291841';
+import { state } from '../store.js?v=2610291841';
+import { expanded, toggleIn } from '../ui-state.js?v=2610291841';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610291841';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610291841';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610291841';
+import { Icon, MonthSwitcher } from '../components.js?v=2610291841';
 
 // Выбранный вид запоминается на устройстве.
 function remembered(key, fallback) {

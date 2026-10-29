@@ -1,13 +1,13 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610291514';
-import { state, isAdmin, updateMyName, updateHouseholdName, signOut, toast } from '../store.js?v=2610291514';
-import { isoDate, addMonths, downloadFile } from '../utils.js?v=2610291514';
-import { Icon } from '../components.js?v=2610291514';
-import { CategoriesSettings } from './categories-settings.js?v=2610291514';
-import { AppearanceSettings } from './appearance-settings.js?v=2610291514';
-import { SecuritySettings } from './lock-screen.js?v=2610291514';
-import { AccountEditor } from './home.js?v=2610291514';
-import { APP_VERSION } from '../config.js?v=2610291514';
+import { api } from '../api.js?v=2610291841';
+import { state, isAdmin, updateMyName, updateHouseholdName, signOut, toast } from '../store.js?v=2610291841';
+import { isoDate, addMonths, downloadFile } from '../utils.js?v=2610291841';
+import { Icon } from '../components.js?v=2610291841';
+import { CategoriesSettings } from './categories-settings.js?v=2610291841';
+import { AppearanceSettings } from './appearance-settings.js?v=2610291841';
+import { SecuritySettings } from './lock-screen.js?v=2610291841';
+import { AccountEditor } from './home.js?v=2610291841';
+import { APP_VERSION } from '../config.js?v=2610291841';
 
 export const SettingsView = {
   components: { Icon, CategoriesSettings, AppearanceSettings, SecuritySettings, AccountEditor },
