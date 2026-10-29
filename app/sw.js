@@ -23,17 +23,30 @@ self.addEventListener('fetch', (e) => {
   // Запросы к Supabase не трогаем.
 });
 
+// Если сеть еле живая и молчит дольше этого, отдаём сохранённую копию (сеть при этом догружает свежую).
+const SLOW_NETWORK_MS = 4000;
+
 async function networkFirst(req) {
   const cache = await caches.open(CACHE);
-  try {
-    // no-cache: всегда сверяться с сервером, чтобы после обновления не смешались старые и новые файлы.
-    const res = await fetch(req, { cache: 'no-cache' });
+  // no-cache: всегда сверяться с сервером, чтобы после обновления не смешались старые и новые файлы.
+  const network = fetch(req, { cache: 'no-cache' }).then(async (res) => {
     if (res.ok) {
       // У файлов есть версия в адресе (?v=…): старые версии того же файла убираем.
       await cache.delete(req, { ignoreSearch: true });
       await cache.put(req, res.clone());
     }
     return res;
+  });
+  // Страница приложения подходит любая сохранённая, а файлы — только той же версии.
+  const saved = () => cache.match(req, { ignoreSearch: req.mode === 'navigate' });
+  try {
+    return await Promise.race([
+      network,
+      new Promise((resolve, reject) => setTimeout(async () => {
+        const hit = await saved();
+        if (hit) resolve(hit); else network.then(resolve, reject);
+      }, SLOW_NETWORK_MS)),
+    ]);
   } catch (err) {
     const hit = await cache.match(req, { ignoreSearch: true });
     if (hit) return hit;

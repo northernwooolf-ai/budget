@@ -1,11 +1,11 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610290248';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610290248';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610290248';
-import { categoryTree, groupLabel } from '../categories.js?v=2610290248';
-import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610290248';
-import { cashbackHint } from './cashback.js?v=2610290248';
-import { CardChip, AccountSelect } from '../cards.js?v=2610290248';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610291514';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610291514';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610291514';
+import { categoryTree, groupLabel } from '../categories.js?v=2610291514';
+import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610291514';
+import { cashbackHint } from './cashback.js?v=2610291514';
+import { CardChip, AccountSelect } from '../cards.js?v=2610291514';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -102,6 +102,7 @@ export const OperationsView = {
       </div>
 
       <p v-if="state.txLoading && !groups.length" class="empty">Загрузка…</p>
+      <p v-else-if="!groups.length && state.offline" class="empty">Без интернета видны только месяцы, которые вы уже открывали.</p>
       <p v-else-if="!groups.length && kindFilter" class="empty">В этом месяце таких операций нет.</p>
       <div v-else-if="!groups.length" class="empty">
         <p>В этом месяце операций пока нет.</p>

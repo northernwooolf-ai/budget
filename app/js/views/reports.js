@@ -1,11 +1,11 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610290248';
-import { state } from '../store.js?v=2610290248';
-import { expanded, toggleIn } from '../ui-state.js?v=2610290248';
-import { rub, isoDate, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610290248';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610290248';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610290248';
-import { Icon, MonthSwitcher } from '../components.js?v=2610290248';
+import { api } from '../api.js?v=2610291514';
+import { state } from '../store.js?v=2610291514';
+import { expanded, toggleIn } from '../ui-state.js?v=2610291514';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610291514';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610291514';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610291514';
+import { Icon, MonthSwitcher } from '../components.js?v=2610291514';
 
 // Выбранный вид запоминается на устройстве.
 function remembered(key, fallback) {
@@ -16,6 +16,7 @@ function remembered(key, fallback) {
 
 export const ReportsView = {
   components: { Icon, MonthSwitcher, RingChart, TrendChart },
+  emits: ['edit'],
   setup() {
     const open = expanded.reportGroups;
     const toggle = (id) => toggleIn(open, id);
@@ -60,10 +61,29 @@ export const ReportsView = {
       if (d) return { items: d.children, total: d.value, label: d.label };
       return { items: spending.value.rows, total: spending.value.total, label: 'Все расходы' };
     });
+    // Выбранная категория: под графиком — список её трат за месяц. Повторное нажатие снимает выбор.
+    const picked = ref(null);
     function selectSlice(item) {
-      if (!drill.value && item.children?.length) drill.value = item.id;
+      if (!drill.value && item.children?.length) { drill.value = item.id; picked.value = null; return; }
+      picked.value = picked.value?.id === item.id ? null : item;
     }
-    watch(() => state.month, () => { drill.value = null; });
+    watch(drill, () => { picked.value = null; });
+    watch(() => state.month, () => { drill.value = null; picked.value = null; });
+
+    // Траты выбранной категории, а если категория не выбрана, но открыт раздел — всего раздела.
+    const pickedList = computed(() => {
+      const group = spendView.value === 'ring' && drill.value && spending.value.rows.find((r) => r.id === drill.value);
+      const target = picked.value ?? group;
+      if (!target) return null;
+      const ids = target.children ? new Set(target.children.map((c) => c.id)) : new Set([target.id === 'none' ? null : target.id]);
+      const items = state.transactions
+        .filter((t) => t.kind === 'expense' && ids.has(t.category_id ?? null))
+        .sort((a, b) => b.date.localeCompare(a.date) || Number(b.amount) - Number(a.amount));
+      return { title: target.label, icon: target.icon, items, total: items.reduce((s, t) => s + Number(t.amount), 0) };
+    });
+    const catById = computed(() => Object.fromEntries(state.categories.map((c) => [c.id, c])));
+    const accName = (id) => state.accounts.find((a) => a.id === id)?.name ?? '';
+    const shortDate = (iso) => parseIso(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
     // Открытый раздел пропал после обновления данных — вернуться ко всем разделам.
     watch(() => spending.value.rows, (rows) => {
       if (drill.value && !rows.some((r) => r.id === drill.value)) drill.value = null;
@@ -97,7 +117,7 @@ export const ReportsView = {
         });
         historyError.value = '';
       } catch (e) {
-        historyError.value = e.message;
+        historyError.value = state.offline ? 'Динамика по месяцам появится, когда будет интернет' : e.message;
       }
     }
     watch([() => state.dataVersion, months], loadHistory, { immediate: true });
@@ -113,7 +133,9 @@ export const ReportsView = {
     return {
       state, open, toggle, spendView, trendMode, months, subject, drill, spending, ring, selectSlice, limits,
       history, historyError, trendSeries, expenseGroups, tree, groupLabel, Math,
+      picked, pickedList, catById, accName, shortDate,
       money: rub, // в отчётах — итоги, показываем без копеек
+      exact: money, // а суммы отдельных трат — как есть
     };
   },
   template: `
@@ -137,7 +159,8 @@ export const ReportsView = {
           <ring-chart :items="ring.items" :total="ring.total" :center-label="drill ? ring.label : 'Все расходы'" @select="selectSlice"/>
           <div class="ring-legend">
             <button v-if="drill" class="btn ghost small" @click="drill = null"><icon name="left" :size="16"/> Все разделы</button>
-            <button v-for="it in ring.items" :key="it.id" class="legend-row" @click="selectSlice(it)">
+            <button v-for="it in ring.items" :key="it.id" :class="['legend-row', { on: picked?.id === it.id }]"
+              :aria-pressed="picked?.id === it.id" @click="selectSlice(it)">
               <i class="swatch" :style="{ background: it.color }"></i>
               <span class="legend-label">{{ it.label }}</span>
               <span class="legend-value">{{ money(it.value) }}</span>
@@ -156,19 +179,39 @@ export const ReportsView = {
               <div class="hbar-value">{{ money(r.value) }} <span class="muted">{{ spending.share(r.value) }}%</span></div>
               <div class="hbar-track"><div class="hbar-fill" :style="{ width: spending.width(r.value) + '%' }"></div></div>
             </button>
-            <div v-else class="hbar-item">
+            <button v-else :class="['hbar-item', { on: picked?.id === r.id }]" :aria-pressed="picked?.id === r.id" @click="selectSlice(r)">
               <div class="hbar-label"><span aria-hidden="true">{{ r.icon }}</span> {{ r.label }}</div>
               <div class="hbar-value">{{ money(r.value) }} <span class="muted">{{ spending.share(r.value) }}%</span></div>
               <div class="hbar-track"><div class="hbar-fill" :style="{ width: spending.width(r.value) + '%' }"></div></div>
-            </div>
+            </button>
             <ul v-if="r.children && open.has(r.id)" class="hbar-children">
               <li v-for="c in r.children" :key="c.id">
-                <span><span aria-hidden="true">{{ c.icon }}</span> {{ c.label }}</span>
-                <span class="hbar-value">{{ money(c.value) }}</span>
+                <button :class="{ on: picked?.id === c.id }" :aria-pressed="picked?.id === c.id" @click="selectSlice(c)">
+                  <span><span aria-hidden="true">{{ c.icon }}</span> {{ c.label }}</span>
+                  <span class="hbar-value">{{ money(c.value) }}</span>
+                </button>
               </li>
             </ul>
           </li>
         </ul>
+
+        <!-- Траты выбранной категории (или открытого раздела): на что именно ушли деньги. -->
+        <div v-if="pickedList" class="picked-list">
+          <div class="plate picked-head">
+            <span class="picked-title">{{ pickedList.icon }} {{ pickedList.title }}</span>
+            <span class="muted">{{ pickedList.items.length }} · {{ money(pickedList.total) }}</span>
+            <button v-if="picked" type="button" class="chip-x" aria-label="Закрыть список" @click="picked = null">×</button>
+          </div>
+          <p v-if="!pickedList.items.length" class="hint">Трат нет.</p>
+          <button v-for="t in pickedList.items" :key="t.id" type="button" class="tx-row" @click="$emit('edit', t)">
+            <span class="tx-icon" aria-hidden="true">{{ catById[t.category_id]?.icon ?? '❔' }}</span>
+            <span class="tx-main">
+              <span class="tx-title">{{ t.note || catById[t.category_id]?.name || 'Без категории' }}</span>
+              <span class="tx-sub">{{ shortDate(t.date) }} · {{ accName(t.account_id) }}</span>
+            </span>
+            <span class="tx-amount expense">−{{ exact(t.amount) }}</span>
+          </button>
+        </div>
       </div>
 
       <div class="card pad">

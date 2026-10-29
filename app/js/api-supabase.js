@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610290248';
-import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610290248';
-import { pick } from './utils.js?v=2610290248';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610291514';
+import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610291514';
+import { pick } from './utils.js?v=2610291514';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -53,7 +53,9 @@ async function invokeFunction(name, body) {
 
 export default {
   async getSession() {
-    const { data } = await sb.auth.getSession();
+    const { data, error } = await sb.auth.getSession();
+    // Без сети токен не обновить, но это не выход из аккаунта: сообщаем, что нет связи.
+    if (error && /fetch|network|load failed/i.test(`${error.name} ${error.message}`)) throw friendlyError(error);
     return data.session;
   },
 

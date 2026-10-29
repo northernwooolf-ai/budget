@@ -3,8 +3,8 @@
 import {
   friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS,
   DEFAULT_ACCOUNTS, DEFAULT_CATEGORY_GROUPS, DEFAULT_LOOSE_CATEGORIES,
-} from './api-common.js?v=2610290248';
-import { pick, isoDate, localGet, localSet } from './utils.js?v=2610290248';
+} from './api-common.js?v=2610291514';
+import { pick, isoDate, localGet, localSet } from './utils.js?v=2610291514';
 
 const KEY = 'budget-demo-db-v3';
 const PARTNER_ID = 'demo-partner';

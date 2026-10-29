@@ -1,7 +1,7 @@
 // Состояние приложения и действия над ним. Экраны читают state и вызывают эти функции.
 import { reactive } from 'vue';
-import { api, isDemo } from './api.js?v=2610290248';
-import { monthStart, addMonths, isoDate } from './utils.js?v=2610290248';
+import { api, isDemo } from './api.js?v=2610291514';
+import { monthStart, addMonths, isoDate } from './utils.js?v=2610291514';
 
 export const state = reactive({
   isDemo,
@@ -19,8 +19,80 @@ export const state = reactive({
   transactions: [],  // операции выбранного месяца
   txLoading: false,
   dataVersion: 0,    // растёт при каждом обновлении данных — чтобы отчёты пересчитывались
+  offline: null,     // { savedAt } — нет интернета, показан последний сохранённый снимок
   toast: null,
 });
+
+// ---------- Снимок данных для работы без интернета ----------
+// После каждой загрузки последние данные сохраняются на устройстве. Без сети приложение
+// открывается с ними: можно посмотреть остатки, кэшбэки и историю, но не менять.
+const SNAPSHOT_KEY = 'offline-snapshot-v1';
+const SNAPSHOT_MONTHS = 6; // сколько последних просмотренных месяцев операций хранить
+
+function readSnapshot() {
+  try { return JSON.parse(localStorage.getItem(SNAPSHOT_KEY)); } catch { return null; }
+}
+
+function saveSnapshot() {
+  if (isDemo || state.offline || !state.me || !state.session) return;
+  try {
+    const prev = readSnapshot();
+    const userId = state.session.user.id;
+    const months = { ...(prev?.user?.id === userId ? prev.months : {}), [isoDate(state.month)]: state.transactions };
+    const keep = Object.keys(months).sort().slice(-SNAPSHOT_MONTHS);
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      user: { id: userId, email: state.session.user.email },
+      me: state.me, household: state.household, members: state.members, accounts: state.accounts,
+      categoryGroups: state.categoryGroups, categories: state.categories, cashbacks: state.cashbacks,
+      balances: state.balances, months: Object.fromEntries(keep.map((k) => [k, months[k]])),
+    }));
+  } catch { /* места нет или хранилище недоступно — просто не сохраняем */ }
+}
+
+export const OFFLINE_TEXT = 'Нет интернета — изменения недоступны';
+const isNetworkError = (e) => /связи с сервером|failed to fetch|networkerror|load failed/i.test(e?.message ?? '');
+
+function goOffline(snap) {
+  Object.assign(state, {
+    session: { user: snap.user }, me: snap.me, household: snap.household, members: snap.members,
+    accounts: snap.accounts, categoryGroups: snap.categoryGroups, categories: snap.categories,
+    cashbacks: snap.cashbacks, balances: snap.balances,
+    transactions: snap.months[isoDate(state.month)] ?? [],
+    offline: { savedAt: snap.savedAt },
+  });
+  state.dataVersion++;
+}
+
+// Сеть вернулась — загрузить свежие данные и снова разрешить изменения.
+async function reconnect() {
+  if (!state.offline) return;
+  try {
+    const session = await api.getSession();
+    if (!session) return;
+    state.session = session;
+    state.offline = null;
+    await loadProfile();
+    listenAuth();
+    toast('Связь восстановлена, данные обновлены');
+  } catch {
+    const snap = readSnapshot();
+    if (snap) goOffline(snap);
+  }
+}
+if (!isDemo) window.addEventListener('online', () => setTimeout(reconnect, 1000));
+
+let authListening = false;
+function listenAuth() {
+  if (authListening) return;
+  authListening = true;
+  api.onAuthChange((session) => {
+    if (state.offline) return;
+    const changed = session?.user?.id !== state.session?.user?.id;
+    state.session = session;
+    if (changed) loadProfile().catch((e) => toast(e.message, 'error'));
+  });
+}
 
 let unsubscribe = null;
 let refreshTimer = null;
@@ -34,16 +106,15 @@ export function toast(text, type = 'ok') {
 }
 
 export async function init() {
+  const snap = isDemo ? null : readSnapshot();
   try {
+    if (snap && navigator.onLine === false) return goOffline(snap);
     state.session = await api.getSession();
-    api.onAuthChange((session) => {
-      const changed = session?.user?.id !== state.session?.user?.id;
-      state.session = session;
-      if (changed) loadProfile().catch((e) => toast(e.message, 'error'));
-    });
+    listenAuth();
     await loadProfile();
   } catch (e) {
-    toast(e.message, 'error');
+    if (snap && isNetworkError(e)) goOffline(snap);
+    else toast(e.message, 'error');
   } finally {
     state.ready = true;
   }
@@ -80,6 +151,7 @@ export async function loadAll() {
   ]);
   if (!me) return loadProfile(); // нас удалили из семьи — вернуться на экран выбора
   Object.assign(state, { me, household: me.household, members, accounts, categoryGroups, categories, cashbacks });
+  saveSnapshot();
 }
 
 export const currentMonthIso = () => isoDate(monthStart(new Date()));
@@ -107,12 +179,19 @@ async function loadBalances() {
 
 export async function loadMonth() {
   const req = ++monthRequest;
+  if (state.offline) {
+    // Без интернета — операции месяца из снимка, если этот месяц уже открывали.
+    state.transactions = readSnapshot()?.months?.[isoDate(state.month)] ?? [];
+    state.dataVersion++;
+    return;
+  }
   state.txLoading = true;
   try {
     const rows = await api.listTransactions(isoDate(state.month), isoDate(addMonths(state.month, 1)));
     if (req !== monthRequest) return; // пока грузили, пользователь переключил месяц
     state.transactions = rows;
     state.dataVersion++;
+    saveSnapshot();
   } finally {
     if (req === monthRequest) state.txLoading = false;
   }
@@ -125,6 +204,10 @@ export function shiftMonth(n) {
 
 // Обёртка для действий: показывает ошибку и обновляет данные после успеха.
 async function act(fn, okText) {
+  if (state.offline) {
+    toast(OFFLINE_TEXT, 'error');
+    throw new Error(OFFLINE_TEXT);
+  }
   try {
     const result = await fn();
     await loadAll();
@@ -158,6 +241,7 @@ export const deleteCategoryGroup = (id) =>
 
 // Перенос категории в другой раздел (groupId = null — «без раздела») на место index.
 export async function moveCategory(category, groupId, targetItems, index) {
+  if (state.offline) return toast(OFFLINE_TEXT, 'error');
   const list = targetItems.filter((c) => c.id !== category.id);
   list.splice(index, 0, category);
   category.group_id = groupId;
@@ -179,6 +263,7 @@ export function setArchived(table, item, archived) {
 
 // Перетаскивание: items — записи одной группы в текущем порядке.
 export async function reorder(table, items, from, to) {
+  if (state.offline) return toast(OFFLINE_TEXT, 'error');
   const list = items.slice();
   const [moved] = list.splice(from, 1);
   list.splice(to, 0, moved);
@@ -203,4 +288,14 @@ export async function setupHousehold(mode, { name, code, displayName }) {
   await loadProfile();
 }
 
-export const signOut = () => api.signOut();
+// При выходе снимок данных стирается: на устройстве не остаётся чужих денег.
+export async function signOut() {
+  try { localStorage.removeItem(SNAPSHOT_KEY); } catch { /* хранилище недоступно */ }
+  if (state.offline) {
+    state.offline = null;
+    state.session = null;
+    await api.signOut().catch(() => {});
+    return loadProfile();
+  }
+  return api.signOut();
+}

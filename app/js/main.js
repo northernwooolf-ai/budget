@@ -1,16 +1,16 @@
 import { createApp, ref, onMounted, onBeforeUnmount } from 'vue';
-import { state, init } from './store.js?v=2610290248';
-import { localGet, localSet } from './utils.js?v=2610290248';
-import { Icon } from './components.js?v=2610290248';
-import { appearance } from './appearance.js?v=2610290248';
-import { lock } from './lock.js?v=2610290248';
-import { LockScreen } from './views/lock-screen.js?v=2610290248';
-import { AuthView, OnboardingView } from './views/auth.js?v=2610290248';
-import { OperationsView, TxEditor } from './views/operations.js?v=2610290248';
-import { HomeView } from './views/home.js?v=2610290248';
-import { ReportsView } from './views/reports.js?v=2610290248';
-import { SettingsView } from './views/settings.js?v=2610290248';
-import { ImportView } from './views/import.js?v=2610290248';
+import { state, init } from './store.js?v=2610291514';
+import { localGet, localSet } from './utils.js?v=2610291514';
+import { Icon } from './components.js?v=2610291514';
+import { appearance } from './appearance.js?v=2610291514';
+import { lock } from './lock.js?v=2610291514';
+import { LockScreen } from './views/lock-screen.js?v=2610291514';
+import { AuthView, OnboardingView } from './views/auth.js?v=2610291514';
+import { OperationsView, TxEditor } from './views/operations.js?v=2610291514';
+import { HomeView } from './views/home.js?v=2610291514';
+import { ReportsView } from './views/reports.js?v=2610291514';
+import { SettingsView } from './views/settings.js?v=2610291514';
+import { ImportView } from './views/import.js?v=2610291514';
 
 const TABS = [
   { id: 'home', label: 'Главная', icon: 'home' },
@@ -48,11 +48,16 @@ const App = {
     onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }));
     onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
 
-    return { state, appearance, lock, TABS, tab, editor, setTab, openEditor, fabHidden, fabOpen, fabPick, importing };
+    const savedAtLabel = (ts) => new Date(ts).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+    return { state, appearance, lock, TABS, tab, editor, setTab, openEditor, fabHidden, fabOpen, fabPick, importing, savedAtLabel };
   },
   template: `
     <div v-if="appearance.bg" class="app-bg" :style="{ backgroundImage: 'url(' + appearance.bg + ')' }" aria-hidden="true"></div>
     <div v-if="state.isDemo" class="demo-banner">Демо-режим: данные хранятся только в этом браузере</div>
+    <div v-if="state.offline" class="demo-banner offline-banner" role="status">
+      Нет интернета · данные на {{ savedAtLabel(state.offline.savedAt) }} · только просмотр
+    </div>
     <div v-if="!state.ready" class="center-page"><p class="muted">Загрузка…</p></div>
     <auth-view v-else-if="!state.session"/>
     <lock-screen v-else-if="lock.locked"/>
@@ -69,10 +74,10 @@ const App = {
       <main class="main">
         <home-view v-if="tab==='home'" @edit="openEditor"/>
         <operations-view v-else-if="tab==='ops'" @edit="openEditor"/>
-        <reports-view v-else-if="tab==='reports'"/>
+        <reports-view v-else-if="tab==='reports'" @edit="openEditor"/>
         <settings-view v-else/>
       </main>
-      <template v-if="tab==='ops' || tab==='home'">
+      <template v-if="(tab==='ops' || tab==='home') && !state.offline">
         <div v-if="fabOpen" class="fab-backdrop" @click="fabOpen = false"></div>
         <div v-if="fabOpen" class="fab-menu" role="menu">
           <button type="button" class="fab-pill" role="menuitem" @click="fabPick('shot')"><span aria-hidden="true">📷</span> Скриншот</button>
