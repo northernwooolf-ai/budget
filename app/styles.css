@@ -549,9 +549,6 @@ fieldset.plain:disabled { opacity: .75; }
 .import-amount { display: flex; align-items: center; gap: 4px; margin-left: auto; font-weight: 600; }
 .import-amount input { width: 110px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .import-note { width: 100%; }
-.import-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
-.import-fields select { width: 100%; min-width: 0; }
-.import-row select.missing { border-color: var(--negative); }
 .segmented.mini button { padding: 5px 10px; font-size: .85rem; white-space: nowrap; }
 .dup-badge {
   align-self: flex-start; font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
@@ -929,3 +926,36 @@ button.plate { -webkit-appearance: none; appearance: none; }
 @media (prefers-reduced-motion: reduce) { .mic-btn.listening { animation: none; } }
 .field textarea { resize: vertical; line-height: 1.4; }
 .link-btn { border: 0; background: none; padding: 0; color: var(--primary); font-weight: 600; text-decoration: underline; }
+
+/* Пока открыто окно, страница под ним стоит на месте. */
+html.modal-open { overflow: hidden; }
+.modal-backdrop, .modal-body, .acc-select-menu { overscroll-behavior: contain; }
+
+/* Выбор счёта: строка ввода, под ней список подходящих */
+.acc-select { cursor: text; }
+.acc-select:focus-within { outline: 2px solid var(--primary); outline-offset: -1px; }
+.field .acc-select input, .acc-select input {
+  flex: 1; width: 100%; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none;
+  outline: none; text-overflow: ellipsis; cursor: inherit;
+}
+.acc-select input::placeholder { color: var(--muted); }
+.acc-select > svg { flex: none; color: var(--muted); }
+.acc-select-backdrop { display: block; padding: 0; background: none; }
+.acc-select-menu { position: fixed; width: auto; max-height: none; border: 1px solid var(--border); border-radius: 12px; }
+.acc-select-empty { padding: 12px 10px; color: var(--muted); }
+
+/* Выбранная категория: одна строка вместо всего списка */
+.cat-picked {
+  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 6px 6px 12px;
+  border: 1px solid var(--primary); border-radius: 10px; background: var(--primary-soft);
+}
+.cat-picked-name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.cat-picked .cat-emoji { font-size: 1.3rem; }
+.picker.missing .cat-search { border-color: var(--negative); }
+
+/* Окно проверки операций: выбор категории и счёта */
+.import-row .cat-search input, .import-row .acc-select input { padding: 0; border: 0; min-height: 0; }
+.import-accounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+/* Сумма — в одну строку с датой, тип операции — строкой ниже. */
+.import-top .segmented { order: 1; }
+.import-amount input { width: 90px; }

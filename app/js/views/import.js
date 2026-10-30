@@ -1,13 +1,13 @@
 // Операции со скриншотов из банка или надиктованные голосом: GigaChat находит операции, вы проверяете и добавляете.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610291841';
-import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610291841';
-import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610291841';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610291841';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610291841';
-import { Icon, Modal } from '../components.js?v=2610291841';
-import { bankKey } from '../cards.js?v=2610291841';
-import { speechSupported, listen } from '../speech.js?v=2610291841';
+import { api } from '../api.js?v=2610301506';
+import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610301506';
+import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610301506';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301506';
+import { Icon, Modal } from '../components.js?v=2610301506';
+import { bankKey, AccountSelect } from '../cards.js?v=2610301506';
+import { CategoryPicker } from './category-picker.js?v=2610301506';
+import { speechSupported, listen } from '../speech.js?v=2610301506';
 
 // ---------- Память: какой магазин в какую категорию, какой банк на какой счёт ----------
 
@@ -58,7 +58,7 @@ async function prepareImage(file) {
 }
 
 export const ImportView = {
-  components: { Modal, Icon },
+  components: { Modal, Icon, AccountSelect, CategoryPicker },
   props: { mode: { type: String, default: 'shot' } }, // shot — скриншоты, voice — диктовка
   emits: ['close'],
   setup(props, { emit }) {
@@ -73,7 +73,6 @@ export const ImportView = {
     const error = ref('');
     const fileInput = ref(null);
 
-    const trees = computed(() => ({ expense: categoryTree('expense'), income: categoryTree('income') }));
     const accountGroups = computed(() => ACCOUNT_TYPES
       .map((g) => ({ ...g, items: state.accounts.filter((a) => !a.archived && typeOf(a).id === g.id).sort(bySort) }))
       .filter((g) => g.items.length));
@@ -92,6 +91,7 @@ export const ImportView = {
         category_id: valid(remembered) ? remembered : valid(op.category_id) ? op.category_id : null,
         // Счёт, названный в диктовке, если такой есть; иначе — по банку скриншота.
         account_id: state.accounts.some((a) => a.id === op.account_id && !a.archived) ? op.account_id : guessAccount(bank, state.me.user_id),
+        to_account_id: null,
         spent_by: state.me.user_id,
         bank,
       });
@@ -186,11 +186,16 @@ export const ImportView = {
     }
 
     const selected = computed(() => rows.value.filter((r) => r.include));
-    const total = computed(() => selected.value.reduce((s, r) => s + (r.kind === 'expense' ? 1 : -1) * (parseAmount(r.amount) || 0), 0));
+    // Переводы между своими счетами не меняют итог.
+    const SIGN = { expense: 1, income: -1, transfer: 0 };
+    const total = computed(() => selected.value.reduce((s, r) => s + SIGN[r.kind] * (parseAmount(r.amount) || 0), 0));
 
     function setKind(r, kind) {
       r.kind = kind;
       if (!state.categories.some((c) => c.id === r.category_id && c.kind === kind)) r.category_id = null;
+      if (kind === 'transfer' && !r.to_account_id) {
+        r.to_account_id = state.accounts.find((a) => !a.archived && a.id !== r.account_id)?.id ?? null;
+      }
     }
 
     async function save() {
@@ -203,10 +208,13 @@ export const ImportView = {
         if (!(amount > 0)) return (error.value = `Строка ${n}: укажите сумму`);
         if (!r.date) return (error.value = `Строка ${n}: укажите дату`);
         if (!r.account_id) return (error.value = `Строка ${n}: выберите счёт`);
-        if (!r.category_id) return (error.value = `Строка ${n} («${r.note}»): выберите категорию`);
+        const transfer = r.kind === 'transfer';
+        if (transfer && !r.to_account_id) return (error.value = `Строка ${n}: выберите, на какой счёт перевод`);
+        if (transfer && r.to_account_id === r.account_id) return (error.value = `Строка ${n}: счета перевода должны различаться`);
+        if (!transfer && !r.category_id) return (error.value = `Строка ${n} («${r.note}»): выберите категорию`);
         list.push({
-          kind: r.kind, amount, date: r.date, account_id: r.account_id, to_account_id: null,
-          category_id: r.category_id, note: r.note?.trim() || null,
+          kind: r.kind, amount, date: r.date, account_id: r.account_id, to_account_id: transfer ? r.to_account_id : null,
+          category_id: transfer ? null : r.category_id, note: r.note?.trim() || null,
           spent_by: admin ? r.spent_by : state.me.user_id,
         });
       }
@@ -236,8 +244,8 @@ export const ImportView = {
     const onFiles = (e) => { recognizeFiles(e.target.files); e.target.value = ''; };
 
     return {
-      state, admin, step, progress, failures, rows, busy, error, fileInput, trees, accountGroups,
-      selected, total, isDuplicate, setKind, save, onFiles, money, groupLabel, categoryLabel,
+      state, admin, step, progress, failures, rows, busy, error, fileInput, accountGroups,
+      selected, total, isDuplicate, setKind, save, onFiles, money,
       voice, spoken, listening, speechSupported, startListening, stopListening, recognizeText,
     };
   },
@@ -296,26 +304,17 @@ export const ImportView = {
             <div class="segmented mini" role="radiogroup" aria-label="Тип">
               <button type="button" :class="{ active: r.kind === 'expense' }" @click="setKind(r, 'expense')">Расход</button>
               <button type="button" :class="{ active: r.kind === 'income' }" @click="setKind(r, 'income')">Доход</button>
+              <button type="button" :class="{ active: r.kind === 'transfer' }" @click="setKind(r, 'transfer')">Перевод</button>
             </div>
             <span class="import-amount"><input v-model="r.amount" inputmode="decimal" aria-label="Сумма"> ₽</span>
           </div>
           <span v-if="isDuplicate(r)" class="dup-badge">Похоже, уже внесено</span>
           <input v-model="r.note" class="import-note" maxlength="200" aria-label="Описание" placeholder="Описание">
-          <div class="import-fields">
-            <select v-model="r.category_id" aria-label="Категория" :class="{ missing: r.include && !r.category_id }">
-              <option :value="null">— выберите категорию —</option>
-              <optgroup v-for="s in trees[r.kind].sections" :key="s.group.id" :label="groupLabel(trees[r.kind], s.group)">
-                <option v-for="c in s.items" :key="c.id" :value="c.id">{{ c.icon }} {{ categoryLabel(trees[r.kind], c) }}</option>
-              </optgroup>
-              <optgroup v-if="trees[r.kind].loose.length" label="Без раздела">
-                <option v-for="c in trees[r.kind].loose" :key="c.id" :value="c.id">{{ c.icon }} {{ c.name }}</option>
-              </optgroup>
-            </select>
-            <select v-model="r.account_id" aria-label="Счёт">
-              <optgroup v-for="g in accountGroups" :key="g.id" :label="g.label">
-                <option v-for="a in g.items" :key="a.id" :value="a.id">{{ a.icon }} {{ a.name }}</option>
-              </optgroup>
-            </select>
+          <category-picker v-if="r.kind !== 'transfer'" v-model="r.category_id" :kind="r.kind"
+            :class="{ missing: r.include && !r.category_id }"/>
+          <div class="import-accounts">
+            <account-select v-model="r.account_id" :groups="accountGroups" :label="r.kind === 'transfer' ? 'Откуда' : 'Счёт'"/>
+            <account-select v-if="r.kind === 'transfer'" v-model="r.to_account_id" :groups="accountGroups" label="Куда"/>
           </div>
         </div>
 
@@ -326,7 +325,7 @@ export const ImportView = {
 
       <template #footer>
         <span v-if="step === 'review' && selected.length" class="muted import-sum">
-          {{ selected.length }} шт. · {{ total >= 0 ? '−' : '+' }}{{ money(Math.abs(total)) }}</span>
+          {{ selected.length }} шт. · {{ total > 0 ? '−' : total < 0 ? '+' : '' }}{{ money(Math.abs(total)) }}</span>
         <span class="spacer"></span>
         <button type="button" class="btn ghost" @click="$emit('close')">Отмена</button>
         <button v-if="step === 'pick' && voice && !listening && spoken.trim()" type="button" class="btn primary" @click="recognizeText">Разобрать</button>

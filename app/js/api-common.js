@@ -1,7 +1,7 @@
 // Общее для обеих реализаций хранилища (Supabase и демо).
 
 export const ACCOUNT_FIELDS = ['name', 'icon', 'type', 'initial_balance', 'credit_limit', 'archived', 'sort',
-  'card_style', 'card_last4', 'card_image'];
+  'card_style', 'card_last4', 'card_image', 'liquid'];
 export const CATEGORY_FIELDS = ['name', 'kind', 'group_id', 'icon', 'monthly_limit', 'archived', 'sort'];
 export const GROUP_FIELDS = ['name', 'kind', 'monthly_limit', 'sort'];
 export const CASHBACK_FIELDS = ['month', 'account_id', 'label', 'percent', 'category_ids'];
@@ -23,6 +23,7 @@ export function friendlyError(err) {
     return new Error('Удалить навсегда нельзя: по этой записи есть операции. Она останется в архиве, история сохранится');
   }
   const msg = err?.message || String(err);
+  if (/'liquid' column/i.test(msg)) return new Error('Чтобы отмечать ликвидные вклады, запустите в Supabase файл update-4-liquid.sql');
   for (const [re, text] of MESSAGES) if (re.test(msg)) return new Error(text);
   return new Error(msg);
 }

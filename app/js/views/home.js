@@ -1,22 +1,23 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610291841';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610291841';
-import { limitStatus } from '../categories.js?v=2610291841';
-import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610291841';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610291841';
-import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote } from '../account-types.js?v=2610291841';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610291841';
-import { useLookups } from './operations.js?v=2610291841';
-import { CashbackCard } from './cashback.js?v=2610291841';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610291841';
+import { api } from '../api.js?v=2610301506';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301506';
+import { limitStatus } from '../categories.js?v=2610301506';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301506';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301506';
+import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301506';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610301506';
+import { useLookups } from './operations.js?v=2610301506';
+import { CashbackCard } from './cashback.js?v=2610301506';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301506';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
 function creditInfo(a) {
-  const limit = Number(a.credit_limit);
-  if (a.type !== 'credit' || !limit) return '';
-  return `доступно ${money(limit + balanceOf(a))} из ${money(limit)}`;
+  if (a.type !== 'credit' || !Number(a.credit_limit)) return '';
+  const balance = balanceOf(a), { limit, available, debt } = creditState(a, balance);
+  // В строке уже видна одна из сумм, рядом показываем вторую.
+  return balance > 0 ? `долг ${money(debt)} из ${money(limit)}` : `доступно ${money(available)} из ${money(limit)}`;
 }
 
 const AccountRow = {
@@ -73,6 +74,7 @@ export const AccountEditor = {
       card_style: a.card_style ?? null,
       card_last4: a.card_last4 ?? '',
       card_image: a.card_image ?? null,
+      liquid: a.liquid ?? false,
     });
     const busy = ref(false);
     const error = ref('');
@@ -118,6 +120,8 @@ export const AccountEditor = {
           initial_balance: isDebt(form.type) ? -value : value,
           credit_limit: form.type === 'credit' ? limit : null,
           card_last4: last4 || null,
+          // Поле отправляем, только когда оно важно: так счета сохраняются и до обновления базы.
+          liquid: canBeLiquid(form.type) && form.liquid ? true : a.liquid ? false : undefined,
         });
         emit('close');
       } catch { /* показано */ } finally { busy.value = false; }
@@ -133,7 +137,7 @@ export const AccountEditor = {
 
     return {
       form, busy, error, balanceLabel, save, toggleArchive, ACCOUNT_TYPES,
-      preview, showCard, imageInput, onCardImage, CARD_STYLES,
+      preview, showCard, imageInput, onCardImage, CARD_STYLES, canBeLiquid,
     };
   },
   template: `
@@ -179,7 +183,12 @@ export const AccountEditor = {
         <label v-if="form.type==='credit'" class="field">
           <span>Кредитный лимит, ₽</span>
           <input v-model="form.credit_limit" inputmode="decimal" placeholder="Необязательно">
+          <small class="hint">Минус на карте — это долг. Плюс — сколько ещё можно снять: долг будет равен лимиту минус эта сумма.</small>
         </label>
+        <div v-if="canBeLiquid(form.type)">
+          <label class="check"><input id="acc-liquid" type="checkbox" v-model="form.liquid"> Ликвидный</label>
+          <small class="hint">Деньги можно снять в любой день без потерь. Такой счёт прибавляется к доступным деньгам на главной, если там отмечено «С учётом ликвидных вкладов».</small>
+        </div>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       </form>
       <template #footer>
@@ -322,7 +331,7 @@ const AccountStatement = {
     </modal>`,
 };
 
-const DEBTS_KEY = 'capital-with-debts';
+const LIQUID_KEY = 'capital-with-liquid';
 
 export const HomeView = {
   components: { Icon, AccountRow, AccountEditor, AccountStatement, StartBalances, CashbackCard, DragLockButton },
@@ -339,42 +348,48 @@ export const HomeView = {
     // Группы при запуске свёрнуты; раскрытые помнятся, пока приложение открыто.
     const collapsed = { has: (id) => !expanded.accountGroups.has(id) };
     const toggle = (id) => toggleIn(expanded.accountGroups, id);
-    const showArchive = ref(false);
+    const showArchive = computed(() => expanded.accountGroups.has('archive'));
 
     const active = computed(() => state.accounts.filter((a) => !a.archived));
     const archived = computed(() => state.accounts.filter((a) => a.archived).sort(bySort));
 
     const groups = computed(() => ACCOUNT_TYPES.map((t) => {
       const items = active.value.filter((a) => typeOf(a).id === t.id).sort(bySort);
-      return { ...t, items, total: items.reduce((s, a) => s + balanceOf(a), 0) };
+      // У кредиток в итоге группы — общий долг: остаток на такой карте может означать и долг, и доступную сумму.
+      const total = t.id === 'credit'
+        ? -items.reduce((s, a) => s + creditState(a, balanceOf(a)).debt, 0)
+        : items.reduce((s, a) => s + balanceOf(a), 0);
+      return { ...t, items, total };
     }).filter((g) => g.items.length));
     // Упрощённый вид: наличные, дебетовые и кредитные карты подряд, в том же порядке, без разделителей.
     const simpleAccounts = computed(() => groups.value
       .filter((g) => ['cash', 'debit', 'credit'].includes(g.id)).flatMap((g) => g.items));
 
-    // «С учётом кредитов» — вычитать ли долги из доступных денег.
-    const withDebts = ref(localGet(DEBTS_KEY) === '1');
-    watch(withDebts, (v) => localSet(DEBTS_KEY, v ? '1' : '0'));
+    // «С учётом ликвидных вкладов» — прибавлять ли счета, с которых можно снять в любой день.
+    const withLiquid = ref(localGet(LIQUID_KEY) === '1');
+    watch(withLiquid, (v) => localSet(LIQUID_KEY, v ? '1' : '0'));
     const details = ref(false);
 
     // Доступные деньги — наличные и дебетовые карты; вклады и инвестиции отдельно,
-    // потому что их нельзя быстро снять. Долги считаются только по реальным минусам.
-    // Плюс на кредитке или кредите в итог не идёт: чаще всего там по ошибке записан лимит,
-    // а не деньги. Такая сумма показывается отдельной подсказкой, чтобы её поправили.
+    // потому что их не всегда можно быстро снять. Долги считаются по реальным минусам,
+    // а у кредитки с лимитом — ещё и по плюсу (см. creditState). Плюс на кредите
+    // или кредитке без лимита в итог не идёт: чаще всего там записана ошибка.
+    // Такая сумма показывается отдельной подсказкой, чтобы её поправили.
     const totals = computed(() => {
-      let available = 0, savings = 0, owedToUs = 0, weOwe = 0, other = 0;
+      let available = 0, savings = 0, liquid = 0, owedToUs = 0, weOwe = 0, other = 0;
       for (const a of active.value) {
         const b = balanceOf(a), t = typeOf(a).id;
         if (t === 'cash' || t === 'debit') available += b;
-        else if (t === 'deposit' || t === 'investment') savings += b;
+        else if (canBeLiquid(t)) { savings += b; if (a.liquid) liquid += b; }
+        else if (t === 'credit' && b > 0 && Number(a.credit_limit)) weOwe += creditState(a, b).debt;
         else if (b < 0) weOwe -= b;
         else if (t === 'lent') owedToUs += b;
         else other += b;
       }
       return {
-        available, savings, owedToUs, weOwe,
+        available, savings, liquid, owedToUs, weOwe,
         other,
-        hero: available - (withDebts.value ? weOwe : 0),
+        hero: available + (withLiquid.value ? liquid : 0),
         total: available + savings + owedToUs - weOwe,
       };
     });
@@ -397,7 +412,7 @@ export const HomeView = {
     }
 
     return {
-      state, editing, viewing, startOpen, needsStart, collapsed, showArchive, toggle, groups, archived, totals, withDebts, details, month, alerts,
+      state, editing, viewing, startOpen, needsStart, collapsed, showArchive, toggle, groups, archived, totals, withLiquid, details, month, alerts,
       editAccount, reorder, money, rub, monthLabel, Math, admin: computed(isAdmin), simpleView, simpleAccounts,
     };
   },
@@ -435,14 +450,14 @@ export const HomeView = {
 
       <!-- Главная сумма — отдельной плашкой, которая прилипает к верху экрана при прокрутке. -->
       <div class="plate sticky-plate money-plate" role="status">
-        <span class="money-plate-label">{{ withDebts ? 'Доступно за вычетом долгов' : 'Доступные деньги' }}</span>
+        <span class="money-plate-label">{{ withLiquid ? 'Доступно с ликвидными вкладами' : 'Доступные деньги' }}</span>
         <b :class="{ negative: totals.hero < 0 }">{{ rub(totals.hero) }}</b>
       </div>
 
       <div class="card pad capital">
         <div class="capital-head">
-          <span class="hint">Наличные и дебетовые карты{{ withDebts ? ' минус кредиты и долги' : '' }}</span>
-          <label class="check small"><input id="with-debts" type="checkbox" v-model="withDebts"> С учётом кредитов</label>
+          <span class="hint">Наличные и дебетовые карты{{ withLiquid ? ' плюс ликвидные вклады' : '' }}</span>
+          <label class="check small"><input id="with-liquid" type="checkbox" v-model="withLiquid"> С учётом ликвидных вкладов</label>
         </div>
         <!-- Расшифровка свёрнута при каждом открытии. -->
         <button type="button" class="plate details-toggle" :aria-expanded="details" @click="details = !details">
@@ -454,6 +469,7 @@ export const HomeView = {
             <b :class="{ negative: totals.available < 0 }">{{ rub(totals.available) }}</b></div>
           <div class="kv"><span>Вклады и инвестиции</span>
             <b :class="{ negative: totals.savings < 0 }">{{ rub(totals.savings) }}</b></div>
+          <div v-if="totals.liquid" class="kv"><span>из них ликвидные</span><b>{{ rub(totals.liquid) }}</b></div>
           <div class="kv"><span>Нам должны</span><b>{{ rub(totals.owedToUs) }}</b></div>
           <div class="kv"><span>Мы должны и кредиты</span>
             <b :class="{ negative: totals.weOwe > 0 }">{{ totals.weOwe > 0 ? '−' : '' }}{{ rub(totals.weOwe) }}</b></div>
@@ -461,17 +477,17 @@ export const HomeView = {
             <b :class="{ negative: totals.total < 0 }">{{ rub(totals.total) }}</b></div>
         </div>
         <p v-if="details && totals.other > 0" class="hint kv-note">
-          ⚠ Не учтено: +{{ rub(totals.other) }} на кредитных картах и кредитах — похоже, там записан лимит,
-          а не долг. Поправьте остаток через «Изменить» в карточке счёта.
+          ⚠ Не учтено: +{{ rub(totals.other) }} на кредитах и кредитных картах без лимита. Похоже, там ошибка:
+          поправьте остаток через «Изменить» в карточке счёта.
         </p>
         <!-- Как в таблице: месяц плашкой, ниже расходы — итог — доходы (в целых рублях, чтобы влезало). -->
         <div class="month-sum">
           <div class="plate">{{ monthLabel(state.month) }}</div>
           <div class="month-sum-row">
-            <div><small>Расходы</small><b class="negative">−{{ rub(month.expense) }}</b></div>
+            <div><small>Расходы</small><b class="negative">{{ rub(month.expense) }}</b></div>
             <div><small>Итог</small>
               <b :class="month.diff < 0 ? 'negative' : 'income'">{{ Math.trunc(month.diff) > 0 ? '+' : '' }}{{ rub(month.diff) }}</b></div>
-            <div><small>Доходы</small><b class="income">+{{ rub(month.income) }}</b></div>
+            <div><small>Доходы</small><b class="income">{{ rub(month.income) }}</b></div>
           </div>
         </div>
       </div>
@@ -504,7 +520,7 @@ export const HomeView = {
       </div>
 
       <div v-if="archived.length" class="group">
-        <button class="group-head" :aria-expanded="showArchive" @click="showArchive = !showArchive">
+        <button class="group-head" :aria-expanded="showArchive" @click="toggle('archive')">
           <icon name="down" :class="['chev', { closed: !showArchive }]" :size="18"/>
           <span class="group-title muted">🗄 Архив <span class="group-count">{{ archived.length }}</span></span>
         </button>

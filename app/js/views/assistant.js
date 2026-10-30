@@ -2,12 +2,12 @@
 // которую приложение собирает здесь же: остатки, кэшбэки, итоги по категориям за 13 месяцев
 // и операции последних двух месяцев. Готовые итоги считаем сами — модели плохо даётся сложение.
 import { ref, reactive, nextTick, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610291841';
-import { state } from '../store.js?v=2610291841';
-import { isoDate, addMonths, monthStart, today, bySort } from '../utils.js?v=2610291841';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610291841';
-import { Icon, Modal } from '../components.js?v=2610291841';
-import { speechSupported, listen } from '../speech.js?v=2610291841';
+import { api } from '../api.js?v=2610301506';
+import { state } from '../store.js?v=2610301506';
+import { isoDate, addMonths, monthStart, today, bySort } from '../utils.js?v=2610301506';
+import { ACCOUNT_TYPES, typeOf, creditState } from '../account-types.js?v=2610301506';
+import { Icon, Modal } from '../components.js?v=2610301506';
+import { speechSupported, listen } from '../speech.js?v=2610301506';
 
 const HISTORY_MONTHS = 13;  // текущий месяц и 12 предыдущих — хватит на «за год» в любом смысле
 const RECENT_DAYS = 60;     // операции целиком — только за последние дни
@@ -37,8 +37,12 @@ async function buildContext() {
     for (const a of accounts.filter((x) => typeOf(x).id === t.id).sort(bySort)) {
       const b = state.balances[a.id] ?? Number(a.initial_balance);
       if (t.id === 'cash' || t.id === 'debit') available += b;
-      const limit = a.type === 'credit' && a.credit_limit ? `, кредитный лимит ${n(a.credit_limit)}` : '';
-      lines.push(`- ${a.name} (${t.label}): ${n(b)} ₽${limit}`);
+      if (a.type === 'credit' && Number(a.credit_limit)) {
+        const c = creditState(a, b);
+        lines.push(`- ${a.name} (${t.label}): долг ${n(c.debt)} ₽, можно снять ещё ${n(c.available)} ₽, кредитный лимит ${n(c.limit)} ₽`);
+        continue;
+      }
+      lines.push(`- ${a.name} (${t.label}${a.liquid ? ', ликвидный: можно снять в любой день' : ''}): ${n(b)} ₽`);
     }
   }
   lines.push(`Доступные деньги (наличные + дебетовые карты): ${n(available)} ₽`);

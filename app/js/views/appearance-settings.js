@@ -1,6 +1,7 @@
 import { ref } from 'vue';
-import { appearance, SCHEMES, ACCENTS, setBackground, clearBackground, resetAppearance } from '../appearance.js?v=2610291841';
-import { toast } from '../store.js?v=2610291841';
+import { appearance, SCHEMES, ACCENTS, setBackground, clearBackground, resetAppearance } from '../appearance.js?v=2610301506';
+import { toast } from '../store.js?v=2610301506';
+import { accordion } from '../ui-state.js?v=2610301506';
 
 export const AppearanceSettings = {
   setup() {
@@ -12,7 +13,7 @@ export const AppearanceSettings = {
       try { await setBackground(file); } catch (err) { toast(err.message, 'error'); }
     }
     const THEMES = [['auto', 'Как в системе'], ['light', 'Светлая'], ['dark', 'Тёмная']];
-    return { appearance, SCHEMES, ACCENTS, THEMES, fileInput, onFile, clearBackground, resetAppearance };
+    return { accordion, appearance, SCHEMES, ACCENTS, THEMES, fileInput, onFile, clearBackground, resetAppearance };
   },
   template: `
     <div class="card pad stack">
@@ -76,6 +77,11 @@ export const AppearanceSettings = {
             <input id="bg-glass" type="range" min="40" max="100" v-model.number="appearance.glass">
           </label>
         </template>
+      </div>
+
+      <div>
+        <label class="check"><input id="accordion" type="checkbox" v-model="accordion"> Раскрывать только один разделитель</label>
+        <small class="hint">Когда открываете разделитель, остальные сворачиваются. Так меньше приходится листать.</small>
       </div>
 
       <div><button type="button" class="btn ghost" @click="resetAppearance">Вернуть оформление по умолчанию</button></div>

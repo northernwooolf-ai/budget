@@ -56,6 +56,20 @@ export function dayLabel(iso) {
   return capitalize(d.toLocaleDateString('ru-RU', opts));
 }
 
+// Поиск по первым буквам: сначала названия, где слово начинается с введённого. Возвращает подходящие.
+export function searchByName(items, query, nameOf = (x) => x.name) {
+  const clean = (s) => s.trim().toLowerCase().replace(/ё/g, 'е');
+  const q = clean(query);
+  if (!q) return items;
+  const rank = (x) => {
+    const name = clean(nameOf(x));
+    if (name.startsWith(q)) return 0;
+    if (name.split(/[\s,.\-–—()]+/).some((w) => w.startsWith(q))) return 1;
+    return name.includes(q) ? 2 : -1;
+  };
+  return items.map((x) => ({ x, r: rank(x) })).filter((e) => e.r >= 0).sort((a, b) => a.r - b.r).map((e) => e.x);
+}
+
 export function localGet(key, fallback = null) {
   try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
 }

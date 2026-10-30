@@ -1,8 +1,8 @@
 // Мелкие общие элементы интерфейса.
 import { ref, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import Sortable from 'sortablejs';
-import { state, shiftMonth } from './store.js?v=2610291841';
-import { monthLabel } from './utils.js?v=2610291841';
+import { state, shiftMonth } from './store.js?v=2610301506';
+import { monthLabel } from './utils.js?v=2610301506';
 
 const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -132,9 +132,12 @@ export const Modal = {
   setup(props, { emit }) {
     // Окна могут открываться поверх друг друга — Esc закрывает только верхнее.
     const onKey = (e) => { if (e.key === 'Escape' && openModals.at(-1) === onKey) emit('close'); };
-    onMounted(() => { openModals.push(onKey); document.addEventListener('keydown', onKey); });
+    // Пока открыто хотя бы одно окно, страница под ним не прокручивается.
+    const lockPage = () => document.documentElement.classList.toggle('modal-open', openModals.length > 0);
+    onMounted(() => { openModals.push(onKey); lockPage(); document.addEventListener('keydown', onKey); });
     onBeforeUnmount(() => {
       openModals.splice(openModals.indexOf(onKey), 1);
+      lockPage();
       document.removeEventListener('keydown', onKey);
     });
   },
@@ -162,9 +165,9 @@ export const MonthSwitcher = {
     </div>`,
 };
 
-const EMOJI = ['🛒', '🥪', '🍫', '🍽️', '☕', '🧴', '🚕', '🚌', '🚕', '⛽', '🚗', '🏠', '💡', '📱', '💊', '🏥', '👕', '👟', '🧸', '🎓',
+const EMOJI = ['🛒', '🥪', '🍫', '🍽️', '☕', '🧴', '🚕', '🚌', '⛽', '🚗', '🏠', '💡', '📱', '💊', '🏥', '👕', '👟', '🧸', '🎓',
   '📚', '🎬', '🎮', '🎁', '💇', '🐶', '✈️', '🏖️', '🏋️', '🔁', '🧾', '🛠️', '📦', '💼', '🧰', '💰',
-  '💵', '💳', '🏦', '🐷', '📈', '🤝', '🧾', '➕', '❤️'];
+  '💵', '💳', '🏦', '🐷', '📈', '🤝', '➕', '❤️'];
 
 export const EmojiPicker = {
   props: { modelValue: String },

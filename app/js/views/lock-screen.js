@@ -1,6 +1,6 @@
 import { ref, onMounted } from 'vue';
-import { lock, unlock, enableLock, disableLock } from '../lock.js?v=2610291841';
-import { state, signOut, toast } from '../store.js?v=2610291841';
+import { lock, unlock, enableLock, disableLock } from '../lock.js?v=2610301506';
+import { state, signOut, toast } from '../store.js?v=2610301506';
 
 // Экран замка: приложение открыто, но данные скрыты до подтверждения отпечатком.
 export const LockScreen = {

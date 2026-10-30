@@ -18,5 +18,16 @@ const byId = Object.fromEntries(ACCOUNT_TYPES.map((t) => [t.id, t]));
 export const typeOf = (account) => byId[account.type] ?? byId.debit;
 export const isDebt = (typeId) => !!byId[typeId]?.debt;
 
+// Вклады и инвестиции можно отметить ликвидными: деньги с них снимаются в любой день без потерь.
+export const canBeLiquid = (typeId) => typeId === 'deposit' || typeId === 'investment';
+
+// Кредитка. Минус на счёте — это долг. Плюс при заданном лимите — сколько ещё можно снять,
+// как показывает банк: лимит 500 000, на карте 300 000 — значит, долг 200 000.
+export function creditState(account, balance) {
+  const limit = Number(account.credit_limit) || 0;
+  if (balance > 0 && limit) return { limit, available: balance, debt: Math.max(limit - balance, 0) };
+  return { limit, available: limit + Math.min(balance, 0), debt: Math.max(-balance, 0) };
+}
+
 // Пояснение к остатку счёта человека.
 export const peopleNote = (balance) => (balance > 0 ? 'должен нам' : balance < 0 ? 'мы должны' : 'в расчёте');

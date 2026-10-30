@@ -1,6 +1,7 @@
 // Мини-карточки счетов: в цветах банка (определяется по названию счёта) или своя картинка.
 import { ref, computed, watch, onBeforeUnmount } from 'vue';
-import { Icon } from './components.js?v=2610291841';
+import { Icon } from './components.js?v=2610301506';
+import { searchByName } from './utils.js?v=2610301506';
 
 // Названия банков, как их пишут в счетах и как их называет GigaChat на скриншотах.
 export const BANKS = {
@@ -85,43 +86,94 @@ export const CardChip = {
 
 // <account-select v-model="id" :groups="[{ label, items }]"/> — выбор счёта с карточками
 // вместо обычного списка (в системном списке телефона картинки не показать).
+// Прямо в строке можно печатать: в списке остаются только подходящие счета.
 export const AccountSelect = {
   components: { CardChip, Icon },
   props: { modelValue: String, groups: Array, label: String },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
     const open = ref(false);
+    const query = ref('');
+    const root = ref(null);
+    const input = ref(null);
+    const menuStyle = ref({});
     const current = computed(() => props.groups.flatMap((g) => g.items).find((a) => a.id === props.modelValue));
+    const shown = computed(() => props.groups
+      .map((g) => ({ ...g, items: searchByName(g.items, query.value) })).filter((g) => g.items.length));
+
+    // Список — под строкой, а если снизу мало места (открыта клавиатура) — над ней.
+    function place() {
+      if (!root.value) return;
+      const r = root.value.getBoundingClientRect();
+      const vv = window.visualViewport;
+      const top = vv?.offsetTop ?? 0, bottom = top + (vv?.height ?? window.innerHeight);
+      const below = bottom - r.bottom - 12, above = r.top - top - 12;
+      const down = below >= 200 || below >= above;
+      const width = Math.max(r.width, Math.min(320, window.innerWidth - 24));
+      menuStyle.value = {
+        left: `${Math.max(12, Math.min(r.left, window.innerWidth - width - 12))}px`,
+        width: `${width}px`,
+        maxHeight: `${Math.max(down ? below : above, 120)}px`,
+        ...(down ? { top: `${r.bottom + 4}px` } : { bottom: `${window.innerHeight - r.top + 4}px` }),
+      };
+    }
+    function show() {
+      if (open.value) return;
+      query.value = '';
+      place();
+      open.value = true;
+    }
+    function close() {
+      open.value = false;
+      input.value?.blur();
+    }
     function choose(a) {
       emit('update:modelValue', a.id);
-      open.value = false;
+      close();
     }
+    const chooseFirst = () => { if (shown.value.length) choose(shown.value[0].items[0]); };
+    function focusLine() {
+      input.value?.focus();
+      if (document.activeElement === input.value) show(); // уже в фокусе: событие focus не повторится
+    }
+
     // Esc закрывает только список, а не окно под ним.
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
       e.stopImmediatePropagation();
-      open.value = false;
+      close();
     };
-    watch(open, (v) => (v ? window.addEventListener('keydown', onKey, true) : window.removeEventListener('keydown', onKey, true)));
-    onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true));
-    return { open, current, choose };
+    function listen(on) {
+      const method = on ? 'addEventListener' : 'removeEventListener';
+      window[method]('keydown', onKey, true);
+      window.visualViewport?.[method]('resize', place);
+      window.visualViewport?.[method]('scroll', place);
+    }
+    watch(open, listen);
+    onBeforeUnmount(() => listen(false));
+    return { open, query, root, input, menuStyle, current, shown, show, close, choose, chooseFirst, focusLine };
   },
   template: `
-    <button type="button" class="acc-select" :aria-label="label" aria-haspopup="listbox" :aria-expanded="open" @click="open = true">
-      <card-chip v-if="current" :account="current" size="sm"/>
-      <span class="acc-select-name">{{ current?.name ?? 'Выберите' }}</span>
+    <div ref="root" class="acc-select" @click="focusLine">
+      <icon v-if="open" name="search" :size="18"/>
+      <card-chip v-else-if="current" :account="current" size="sm"/>
+      <!-- Не v-model: клавиатура телефона набирает слово «черновиком», и v-model ждёт его окончания. -->
+      <input ref="input" :value="open ? query : current?.name ?? ''" :placeholder="current?.name ?? 'Выберите'" :aria-label="label"
+        role="combobox" aria-haspopup="listbox" :aria-expanded="open" autocomplete="off" enterkeyhint="done"
+        @focus="show" @input="query = $event.target.value" @keydown.enter.prevent="chooseFirst">
       <icon name="down" :size="16"/>
-    </button>
+    </div>
     <teleport to="body">
-      <div v-if="open" class="acc-select-backdrop" @click.self="open = false">
-        <div class="acc-select-menu" role="listbox" :aria-label="label">
-          <template v-for="g in groups" :key="g.label">
-            <div v-if="g.label && groups.length > 1" class="acc-select-group">{{ g.label }}</div>
+      <div v-if="open" class="acc-select-backdrop" @click.self="close">
+        <div class="acc-select-menu" role="listbox" :aria-label="label" :style="menuStyle">
+          <template v-for="g in shown" :key="g.label">
+            <div v-if="g.label && shown.length > 1" class="acc-select-group">{{ g.label }}</div>
             <button v-for="a in g.items" :key="a.id" type="button" role="option" :aria-selected="a.id === modelValue"
               :class="['acc-select-opt', { selected: a.id === modelValue }]" @click="choose(a)">
               <card-chip :account="a" size="sm"/><span class="acc-select-name">{{ a.name }}</span>
             </button>
           </template>
+          <p v-if="!shown.length" class="acc-select-empty">Ничего не нашлось</p>
         </div>
       </div>
     </teleport>`,

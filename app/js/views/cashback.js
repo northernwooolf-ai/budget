@@ -1,13 +1,14 @@
 // Кэшбэки: раз в месяц выбираете по картам («Супермаркеты 7%»), привязываете к своим категориям,
 // а приложение подсказывает, какой картой что выгоднее покупать.
 import { ref, computed, watch, nextTick } from 'vue';
-import { api } from '../api.js?v=2610291841';
-import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610291841';
-import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610291841';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610291841';
-import { Icon, Modal } from '../components.js?v=2610291841';
-import { CardChip, AccountSelect } from '../cards.js?v=2610291841';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610291841';
+import { api } from '../api.js?v=2610301506';
+import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610301506';
+import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610301506';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610301506';
+import { Icon, Modal } from '../components.js?v=2610301506';
+import { toggleIn } from '../ui-state.js?v=2610301506';
+import { CardChip, AccountSelect } from '../cards.js?v=2610301506';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301506';
 
 // Карты, по которым бывает кэшбэк: наличные и вклады не нужны.
 const cardAccounts = () => state.accounts
@@ -56,7 +57,7 @@ const CategoryChecklist = {
       ids.forEach((id) => (on ? next.add(id) : next.delete(id)));
       emit('update:modelValue', [...next]);
     }
-    const toggleOpen = (id) => { const s = new Set(open.value); s.has(id) ? s.delete(id) : s.add(id); open.value = s; };
+    const toggleOpen = (id) => { const s = new Set(open.value); toggleIn(s, id); open.value = s; };
     return { open, allIds, picked, stateOf, sectionIds, setMany, toggleOpen, countIn, groupLabel };
   },
   template: `

@@ -3,11 +3,11 @@ import { ref, reactive, computed } from 'vue';
 import {
   state, isAdmin, saveCategory, deleteCategory, setArchived, reorder, moveCategory,
   saveCategoryGroup, deleteCategoryGroup,
-} from '../store.js?v=2610291841';
-import { money, parseAmount, amountToInput, bySort } from '../utils.js?v=2610291841';
-import { expanded, toggleIn } from '../ui-state.js?v=2610291841';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610291841';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610291841';
+} from '../store.js?v=2610301506';
+import { money, parseAmount, amountToInput, bySort } from '../utils.js?v=2610301506';
+import { expanded, toggleIn } from '../ui-state.js?v=2610301506';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610301506';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610301506';
 
 const parseLimit = (s) => (s === '' ? null : parseAmount(s));
 
