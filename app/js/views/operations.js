@@ -1,11 +1,11 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610301540';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610301540';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301540';
-import { CategoryPicker } from './category-picker.js?v=2610301540';
-import { Icon, Modal, MonthSwitcher } from '../components.js?v=2610301540';
-import { cashbackHint } from './cashback.js?v=2610301540';
-import { CardChip, AccountSelect } from '../cards.js?v=2610301540';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610301605';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610301605';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301605';
+import { CategoryPicker } from './category-picker.js?v=2610301605';
+import { Icon, Modal, MonthSwitcher, vLongPress } from '../components.js?v=2610301605';
+import { cashbackHint } from './cashback.js?v=2610301605';
+import { CardChip, AccountSelect } from '../cards.js?v=2610301605';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -18,9 +18,16 @@ export function useLookups() {
 // Чья это операция: выбранный участник, а для старых записей — тот, кто внёс.
 export const ownerOf = (t) => t.spent_by ?? t.created_by;
 
+// Заготовка новой операции по образцу старой: всё то же, но без номера, поэтому сохранится как новая.
+export const copyOfTx = (t) => ({
+  kind: t.kind, amount: t.amount, account_id: t.account_id, to_account_id: t.to_account_id,
+  category_id: t.category_id, date: t.date, note: t.note, spent_by: ownerOf(t),
+});
+
 export const OperationsView = {
   components: { Icon, MonthSwitcher, CardChip },
-  emits: ['edit'],
+  directives: { longPress: vLongPress },
+  emits: ['edit', 'copy'],
   setup() {
     const { categoryById, accountById } = useLookups();
     const list = computed(() => state.transactions);
@@ -80,10 +87,10 @@ export const OperationsView = {
       </header>
 
       <div class="summary">
-        <div class="stat"><span class="stat-label">Доходы</span><span class="stat-value income">{{ rub(totals.income) }}</span></div>
-        <div class="stat"><span class="stat-label">Расходы</span><span class="stat-value">{{ rub(totals.expense) }}</span></div>
+        <div class="stat"><span class="stat-label">Расходы</span><span class="stat-value negative">{{ rub(totals.expense) }}</span></div>
         <div class="stat"><span class="stat-label">Итог месяца</span>
           <span :class="['stat-value', totals.diff < 0 ? 'negative' : 'income']">{{ Math.trunc(totals.diff) > 0 ? '+' : '' }}{{ rub(totals.diff) }}</span></div>
+        <div class="stat"><span class="stat-label">Доходы</span><span class="stat-value income">{{ rub(totals.income) }}</span></div>
       </div>
 
       <!-- Переключатель по центру и не двигается. -->
@@ -115,7 +122,7 @@ export const OperationsView = {
           <span v-if="g.expense" class="muted">−{{ rub(g.expense) }}</span>
         </div>
         <div v-if="listView === 'table'" class="card list">
-          <button v-for="t in g.items" :key="t.id" :class="['tx3', 'tx3-' + t.kind]" @click="$emit('edit', t)">
+          <button v-for="t in g.items" :key="t.id" :class="['tx3', 'tx3-' + t.kind]" v-long-press="() => $emit('copy', t)" @click="$emit('edit', t)">
             <template v-if="t.kind === 'expense'">
               <span class="z-left tx3-amount negative">−{{ money(t.amount) }}</span>
               <span class="z-mid"><span class="tx3-cat">{{ view(t).icon }} {{ view(t).title }}</span><small v-if="t.note">{{ t.note }}</small></span>
@@ -135,7 +142,7 @@ export const OperationsView = {
           </button>
         </div>
         <div v-else class="card list">
-          <button v-for="t in g.items" :key="t.id" class="tx-row" @click="$emit('edit', t)">
+          <button v-for="t in g.items" :key="t.id" class="tx-row" v-long-press="() => $emit('copy', t)" @click="$emit('edit', t)">
             <span class="tx-icon" aria-hidden="true">{{ view(t).icon }}</span>
             <span class="tx-main">
               <span class="tx-title">{{ view(t).title }}</span>
@@ -192,7 +199,8 @@ export const TxEditor = {
       }
     });
 
-    onMounted(() => { if (!t) nextTick(() => amountEl.value?.focus()); });
+    // В новой операции и в копии сразу можно вводить сумму; в копии старая сумма выделена и заменится при вводе.
+    onMounted(() => { if (!t?.id) nextTick(() => { amountEl.value?.focus(); amountEl.value?.select(); }); });
 
     // Как операция меняет остаток счёта accId (для старой версии при редактировании — тоже).
     function effectOn(tx, accId) {
@@ -211,7 +219,7 @@ export const TxEditor = {
       const type = typeOf(acc);
       if (type.id === 'lent' || type.id === 'borrowed') return '';
       const now = state.balances[acc.id] ?? Number(acc.initial_balance);
-      const after = now - effectOn(t, acc.id) + effectOn(draft, acc.id);
+      const after = now - effectOn(t?.id ? t : null, acc.id) + effectOn(draft, acc.id);
       if (after >= now) return '';
       if (type.id === 'credit') {
         const limit = Number(acc.credit_limit);
@@ -287,7 +295,7 @@ export const TxEditor = {
     return {
       state, form, accountGroups,
       readOnly, author, busy, error, warning, cashback, amountEl, save, remove, confirmDelete,
-      title: readOnly ? 'Операция (просмотр)' : t ? 'Операция' : 'Новая операция',
+      title: readOnly ? 'Операция (просмотр)' : t?.id ? 'Операция' : t ? 'Копия операции' : 'Новая операция',
     };
   },
   template: `
@@ -298,9 +306,9 @@ export const TxEditor = {
       <form id="tx-form" class="stack" @submit.prevent="save">
         <fieldset class="plain stack" :disabled="readOnly">
           <div class="segmented kind-switch" role="radiogroup" aria-label="Тип операции">
-            <button type="button" role="radio" :aria-checked="form.kind==='expense'" :class="{active: form.kind==='expense'}" @click="form.kind='expense'">Расход</button>
-            <button type="button" role="radio" :aria-checked="form.kind==='income'" :class="{active: form.kind==='income'}" @click="form.kind='income'">Доход</button>
+            <button type="button" role="radio" :aria-checked="form.kind==='expense'" :class="['k-expense', {active: form.kind==='expense'}]" @click="form.kind='expense'">Расход</button>
             <button type="button" role="radio" :aria-checked="form.kind==='transfer'" :class="{active: form.kind==='transfer'}" @click="form.kind='transfer'">Перевод</button>
+            <button type="button" role="radio" :aria-checked="form.kind==='income'" :class="['k-income', {active: form.kind==='income'}]" @click="form.kind='income'">Доход</button>
           </div>
 
           <label class="amount-field">

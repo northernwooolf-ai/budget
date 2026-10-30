@@ -3,11 +3,11 @@ import { ref, reactive, computed } from 'vue';
 import {
   state, isAdmin, saveCategory, deleteCategory, setArchived, reorder, moveCategory,
   saveCategoryGroup, deleteCategoryGroup,
-} from '../store.js?v=2610301540';
-import { money, parseAmount, amountToInput, bySort } from '../utils.js?v=2610301540';
-import { expanded, toggleIn } from '../ui-state.js?v=2610301540';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610301540';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610301540';
+} from '../store.js?v=2610301605';
+import { money, parseAmount, amountToInput, bySort } from '../utils.js?v=2610301605';
+import { expanded, toggleIn } from '../ui-state.js?v=2610301605';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610301605';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610301605';
 
 const parseLimit = (s) => (s === '' ? null : parseAmount(s));
 
@@ -111,8 +111,8 @@ const CategoryEditor = {
     <modal :title="form.id ? 'Категория' : 'Новая категория'" @close="$emit('close')">
       <form id="cat-form" class="stack" @submit.prevent="save">
         <div v-if="!form.id" class="segmented">
-          <button type="button" :class="{active: form.kind==='expense'}" @click="form.kind='expense'; form.group_id=null">Расход</button>
-          <button type="button" :class="{active: form.kind==='income'}" @click="form.kind='income'; form.group_id=null">Доход</button>
+          <button type="button" :class="['k-expense', {active: form.kind==='expense'}]" @click="form.kind='expense'; form.group_id=null">Расход</button>
+          <button type="button" :class="['k-income', {active: form.kind==='income'}]" @click="form.kind='income'; form.group_id=null">Доход</button>
         </div>
         <label class="field"><span>Название</span><input v-model="form.name" maxlength="40" required placeholder="Например, Еда домой"></label>
         <label class="field">
@@ -211,8 +211,8 @@ export const CategoriesSettings = {
       </div>
       <p v-if="!admin" class="hint">Категории и лимиты настраивает администратор бюджета.</p>
       <div class="segmented">
-        <button :class="{active: kind==='expense'}" @click="kind='expense'">Расходы</button>
-        <button :class="{active: kind==='income'}" @click="kind='income'">Доходы</button>
+        <button :class="['k-expense', {active: kind==='expense'}]" @click="kind='expense'">Расходы</button>
+        <button :class="['k-income', {active: kind==='income'}]" @click="kind='income'">Доходы</button>
       </div>
 
       <div class="sections" v-sortable="{ onMove: moveGroup, handle: '.group-handle', disabled: !admin }">

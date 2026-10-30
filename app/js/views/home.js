@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301540';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301540';
-import { limitStatus } from '../categories.js?v=2610301540';
-import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301540';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301540';
-import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301540';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610301540';
-import { useLookups } from './operations.js?v=2610301540';
-import { CashbackCard } from './cashback.js?v=2610301540';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301540';
+import { api } from '../api.js?v=2610301605';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301605';
+import { limitStatus } from '../categories.js?v=2610301605';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301605';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301605';
+import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301605';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress } from '../components.js?v=2610301605';
+import { useLookups } from './operations.js?v=2610301605';
+import { CashbackCard } from './cashback.js?v=2610301605';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301605';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -253,8 +253,9 @@ const StartBalances = {
 // Выписка: все движения по счёту и остаток после каждого.
 const AccountStatement = {
   components: { Modal, Icon, CardChip },
+  directives: { longPress: vLongPress },
   props: { account: Object },
-  emits: ['close', 'edit', 'edit-account'],
+  emits: ['close', 'edit', 'copy', 'edit-account'],
   setup(props) {
     const { categoryById, accountById } = useLookups();
     const rows = ref(null);
@@ -301,12 +302,12 @@ const AccountStatement = {
           <div :class="['hero', { negative: balance < 0 }]">{{ money(balance) }}</div>
           <div v-if="creditInfo(account)" class="hint">{{ creditInfo(account) }}</div>
         </div>
-        <button v-if="admin" class="btn" @click="$emit('edit-account', account)"><icon name="edit" :size="18"/> Изменить</button>
+        <button v-if="admin" class="icon-btn statement-edit" title="Изменить счёт" aria-label="Изменить счёт" @click="$emit('edit-account', account)"><icon name="edit" :size="20"/></button>
       </div>
       <p v-if="rows === null" class="empty">Загрузка…</p>
       <p v-else-if="!items.length" class="empty">Движений по счёту пока нет</p>
       <div v-else class="list statement">
-        <button v-for="i in items.slice(0, 300)" :key="i.t.id" class="tx-row" @click="$emit('edit', i.t)">
+        <button v-for="i in items.slice(0, 300)" :key="i.t.id" class="tx-row" v-long-press="() => $emit('copy', i.t)" @click="$emit('edit', i.t)">
           <span class="tx-icon" aria-hidden="true">{{ i.icon }}</span>
           <span class="tx-main">
             <span class="tx-title">{{ i.title }}</span>
@@ -326,7 +327,7 @@ const LIQUID_KEY = 'capital-with-liquid';
 export const HomeView = {
   components: { Icon, AccountRow, AccountEditor, AccountStatement, StartBalances, CashbackCard, DragLockButton },
   directives: { sortable: vSortable },
-  emits: ['edit'],
+  emits: ['edit', 'copy'],
   setup() {
     const editing = ref(null);
     const viewing = ref(null);
@@ -522,7 +523,7 @@ export const HomeView = {
       </template>
 
       <account-statement v-if="viewing" :account="viewing" @close="viewing = null"
-        @edit="$emit('edit', $event)" @edit-account="editAccount"/>
+        @edit="$emit('edit', $event)" @copy="$emit('copy', $event)" @edit-account="editAccount"/>
       <account-editor v-if="editing" :account="editing" @close="editing = null"/>
       <start-balances v-if="startOpen" @close="startOpen = false"/>
     </section>`,

@@ -1,11 +1,11 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301540';
-import { state } from '../store.js?v=2610301540';
-import { expanded, toggleIn } from '../ui-state.js?v=2610301540';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301540';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301540';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301540';
-import { Icon, MonthSwitcher } from '../components.js?v=2610301540';
+import { api } from '../api.js?v=2610301605';
+import { state } from '../store.js?v=2610301605';
+import { expanded, toggleIn } from '../ui-state.js?v=2610301605';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301605';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301605';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301605';
+import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610301605';
 
 // Выбранный вид запоминается на устройстве.
 function remembered(key, fallback) {
@@ -16,7 +16,8 @@ function remembered(key, fallback) {
 
 export const ReportsView = {
   components: { Icon, MonthSwitcher, RingChart, TrendChart },
-  emits: ['edit'],
+  directives: { longPress: vLongPress },
+  emits: ['edit', 'copy'],
   setup() {
     const open = expanded.reportGroups;
     const toggle = (id) => toggleIn(open, id);
@@ -203,7 +204,7 @@ export const ReportsView = {
             <button v-if="picked" type="button" class="chip-x" aria-label="Закрыть список" @click="picked = null">×</button>
           </div>
           <p v-if="!pickedList.items.length" class="hint">Трат нет.</p>
-          <button v-for="t in pickedList.items" :key="t.id" type="button" class="tx-row" @click="$emit('edit', t)">
+          <button v-for="t in pickedList.items" :key="t.id" type="button" class="tx-row" v-long-press="() => $emit('copy', t)" @click="$emit('edit', t)">
             <span class="tx-icon" aria-hidden="true">{{ catById[t.category_id]?.icon ?? '❔' }}</span>
             <span class="tx-main">
               <span class="tx-title">{{ t.note || catById[t.category_id]?.name || 'Без категории' }}</span>

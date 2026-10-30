@@ -1,8 +1,8 @@
 // Мелкие общие элементы интерфейса.
 import { ref, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import Sortable from 'sortablejs';
-import { state, shiftMonth } from './store.js?v=2610301540';
-import { monthLabel } from './utils.js?v=2610301540';
+import { state, shiftMonth } from './store.js?v=2610301605';
+import { monthLabel } from './utils.js?v=2610301605';
 
 const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -39,6 +39,46 @@ export const Icon = {
   computed: { d() { return ICONS[this.name]; } },
   template: `<svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="d"/></svg>`,
+};
+
+// v-long-press="fn" — нажатие с удержанием на телефоне, правая кнопка мыши на компьютере.
+// Прокрутка пальцем удержанием не считается, а обычное нажатие работает как раньше.
+const LONG_PRESS_MS = 500;
+const MOVE_TOLERANCE = 10;
+export const vLongPress = {
+  mounted(el, binding) {
+    el._longPress = binding.value;
+    let timer = null, start = null, fired = false;
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    const fire = () => {
+      cancel();
+      if (fired) return;
+      fired = true;
+      navigator.vibrate?.(30);
+      el._longPress();
+    };
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button) return;
+      fired = false;
+      start = [e.clientX, e.clientY];
+      cancel();
+      timer = setTimeout(fire, LONG_PRESS_MS);
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (timer && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > MOVE_TOLERANCE) cancel();
+    });
+    for (const type of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(type, cancel);
+    // Телефон сам сообщает об удержании этим событием, его системное меню здесь не нужно.
+    el.addEventListener('contextmenu', (e) => { e.preventDefault(); fire(); });
+    // Отпускание пальца после удержания не должно считаться ещё и обычным нажатием.
+    el.addEventListener('click', (e) => {
+      if (!fired) return;
+      fired = false;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);
+  },
+  updated(el, binding) { el._longPress = binding.value; },
 };
 
 // Кнопка с подтверждением: первое нажатие спрашивает, второе выполняет.

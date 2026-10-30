@@ -838,7 +838,6 @@ button.plate { -webkit-appearance: none; appearance: none; }
 .fab.hidden { transform: translateY(140%); opacity: 0; pointer-events: none; }
 .fab.open svg { transform: rotate(45deg); }
 .fab svg { transition: transform .15s; }
-.fab-backdrop { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .25); }
 @media (prefers-reduced-motion: reduce) { .fab svg { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .fab { transition: none; } }
 
@@ -942,17 +941,9 @@ html.modal-open { overflow: hidden; }
 
 /* Круглые кнопки по дуге вокруг «+»: подложка акцентного цвета, как у самой кнопки.
    Отсчёт от центра «+»: кнопка 52px ровно под ним, затем сдвиг на радиус 90px. */
-.fab-round {
-  position: fixed; z-index: 21; right: 22px; bottom: calc(var(--nav-h) + 22px + env(safe-area-inset-bottom));
-  width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
-  background: var(--primary); color: var(--primary-ink); box-shadow: 0 4px 14px rgb(0 0 0 / .35);
-  transform: translate(var(--x), var(--y)); animation: fab-pop .16s ease-out;
-}
 .fab-round.arc-1 { --x: -90px; --y: 0px; }
 .fab-round.arc-2 { --x: -64px; --y: -64px; }
 .fab-round.arc-3 { --x: 0px; --y: -90px; }
-@keyframes fab-pop { from { transform: translate(0, 0) scale(.4); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .fab-round { animation: none; } }
 
 /* Помощник — отдельная вкладка: поле вопроса внизу экрана, над меню. */
 .main.main-chat { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
@@ -981,3 +972,39 @@ html.modal-open { overflow: hidden; }
 
 /* Строка кэшбэка, которую нужно дозаполнить */
 .cb-row.invalid { border-color: var(--negative); box-shadow: inset 0 0 0 1px var(--negative); }
+
+/* Круглые кнопки всегда на месте, спрятаны под «+»: при открытии выплывают из него, при закрытии плавно возвращаются. */
+.fab-round {
+  position: fixed; z-index: 21; right: 22px; bottom: calc(var(--nav-h) + 22px + env(safe-area-inset-bottom));
+  width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
+  background: var(--primary); color: var(--primary-ink); box-shadow: 0 4px 14px rgb(0 0 0 / .35);
+  transform: translate(0, 0) scale(.4); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform .24s cubic-bezier(.4, 0, .6, 1), opacity .2s ease-in, visibility 0s .24s;
+}
+.fab-arc.open .fab-round {
+  transform: translate(var(--x), var(--y)); opacity: 1; visibility: visible; pointer-events: auto;
+  transition: transform .3s cubic-bezier(.2, .9, .3, 1.15), opacity .18s ease-out, visibility 0s;
+}
+.fab-arc.open .arc-2 { transition-delay: .04s; }
+.fab-arc.open .arc-3 { transition-delay: .08s; }
+.fab-backdrop {
+  position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .25);
+  opacity: 0; pointer-events: none; transition: opacity .24s;
+}
+.fab-backdrop.open { opacity: 1; pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .fab-round, .fab-arc.open .fab-round, .fab-backdrop { transition: none; } }
+@media (min-width: 900px) { .fab-round, .fab-backdrop { display: none; } }
+
+/* Тип операции: всегда Расход — Перевод — Доход, расход красный, доход зелёный. */
+.segmented button.k-expense, .segmented button.k-expense.active { color: var(--negative); }
+.segmented button.k-income, .segmented button.k-income.active { color: var(--income); }
+
+/* Карандаш в выписке: всегда помещается рядом с остатком. */
+.statement-edit { flex: none; border: 1px solid var(--border); }
+.statement-head .hero { overflow-wrap: anywhere; }
+
+/* Удержание на операции: без системного меню и выделения текста. */
+.tx-row, .tx3 { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+.import-clear { align-self: flex-start; font-size: .85rem; }
+.statement-head .grow { min-width: 0; }

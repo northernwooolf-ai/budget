@@ -1,7 +1,7 @@
 // Мини-карточки счетов: в цветах банка (определяется по названию счёта) или своя картинка.
 import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue';
-import { Icon } from './components.js?v=2610301540';
-import { searchByName } from './utils.js?v=2610301540';
+import { Icon } from './components.js?v=2610301605';
+import { searchByName } from './utils.js?v=2610301605';
 
 // Названия банков, как их пишут в счетах и как их называет GigaChat на скриншотах.
 export const BANKS = {
@@ -129,7 +129,7 @@ export const CardChip = {
 // Прямо в строке можно печатать: в списке остаются только подходящие счета.
 export const AccountSelect = {
   components: { CardChip, Icon },
-  props: { modelValue: String, groups: Array, label: String },
+  props: { modelValue: String, groups: Array, label: String, placeholder: { type: String, default: 'Выберите' } },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
     const open = ref(false);
@@ -198,7 +198,7 @@ export const AccountSelect = {
       <icon v-if="open" name="search" :size="18"/>
       <card-chip v-else-if="current" :account="current" size="sm"/>
       <!-- Не v-model: клавиатура телефона набирает слово «черновиком», и v-model ждёт его окончания. -->
-      <input ref="input" :value="open ? query : current?.name ?? ''" :placeholder="current?.name ?? 'Выберите'" :aria-label="label"
+      <input ref="input" :value="open ? query : current?.name ?? ''" :placeholder="current?.name ?? placeholder" :aria-label="label"
         role="combobox" aria-haspopup="listbox" :aria-expanded="open" autocomplete="off" enterkeyhint="done"
         @focus="show" @input="query = $event.target.value" @keydown.enter.prevent="chooseFirst">
       <icon name="down" :size="16"/>

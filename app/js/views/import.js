@@ -1,13 +1,13 @@
 // Операции со скриншотов из банка или надиктованные голосом: GigaChat находит операции, вы проверяете и добавляете.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610301540';
-import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610301540';
-import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610301540';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301540';
-import { Icon, Modal } from '../components.js?v=2610301540';
-import { bankKey, AccountSelect } from '../cards.js?v=2610301540';
-import { CategoryPicker } from './category-picker.js?v=2610301540';
-import { speechSupported, listen } from '../speech.js?v=2610301540';
+import { api } from '../api.js?v=2610301605';
+import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610301605';
+import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610301605';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301605';
+import { Icon, Modal } from '../components.js?v=2610301605';
+import { bankKey, AccountSelect } from '../cards.js?v=2610301605';
+import { CategoryPicker } from './category-picker.js?v=2610301605';
+import { speechSupported, listen } from '../speech.js?v=2610301605';
 
 // ---------- Память: какой магазин в какую категорию, какой банк на какой счёт ----------
 
@@ -65,6 +65,8 @@ export const ImportView = {
     const voice = props.mode === 'voice';
     // Дата, указанная вручную, важнее даты со скриншота: на нём её бывает не видно.
     const shotDate = ref('');
+    // Карта, указанная вручную, важнее всего, что удастся понять по скриншоту.
+    const shotAccount = ref(null);
     const admin = isAdmin();
     const step = ref('pick');        // pick → work → review
     const progress = ref('');
@@ -79,7 +81,26 @@ export const ImportView = {
       .map((g) => ({ ...g, items: state.accounts.filter((a) => !a.archived && typeOf(a).id === g.id).sort(bySort) }))
       .filter((g) => g.items.length));
 
-    function makeRow(op, bank) {
+    // Какой счёт подставить: выбранный вручную → по цифрам карты со скриншота → названный GigaChat
+    // (если банк совпадает, он иногда угадывает) → последний выбранный для этого банка.
+    function accountFor(op, bank) {
+      const active = state.accounts.filter((a) => !a.archived);
+      if (!voice && active.some((a) => a.id === shotAccount.value)) return shotAccount.value;
+      const byDigits = op.card && active.find((a) => a.card_last4 === op.card);
+      if (byDigits) return byDigits.id;
+      const named = active.find((a) => a.id === op.account_id);
+      const key = bankKey(bank), namedKey = bankKey(named?.name);
+      if (named && (!key || !namedKey || key === namedKey)) return named.id;
+      return guessAccount(bank, state.me.user_id);
+    }
+
+    // Счета для GigaChat: по ним он определяет карту в тексте или на скриншоте.
+    const accountsBrief = () => state.accounts.filter((a) => !a.archived)
+      .map((a) => ({ id: a.id, name: a.name, type: a.type, last4: a.card_last4 ?? null }));
+
+    let nextBatch = 0; // номер скриншота или диктовки: повторы внутри одного не считаются дублями
+
+    function makeRow(op, bank, batch) {
       const memory = merchantMemory();
       const remembered = memory[normalize(op.description)];
       const valid = (id) => state.categories.some((c) => c.id === id && c.kind === op.direction && !c.archived);
@@ -91,11 +112,11 @@ export const ImportView = {
         kind: op.direction,
         note: op.description,
         category_id: valid(remembered) ? remembered : valid(op.category_id) ? op.category_id : null,
-        // Счёт, названный в диктовке, если такой есть; иначе — по банку скриншота.
-        account_id: state.accounts.some((a) => a.id === op.account_id && !a.archived) ? op.account_id : guessAccount(bank, state.me.user_id),
+        account_id: accountFor(op, bank),
         to_account_id: null,
         spent_by: state.me.user_id,
         bank,
+        batch,
       });
     }
 
@@ -109,8 +130,9 @@ export const ImportView = {
       for (const [i, file] of images.entries()) {
         progress.value = images.length > 1 ? `Распознаю скриншот ${i + 1} из ${images.length}…` : 'Распознаю скриншот…';
         try {
-          const result = await api.recognize({ image: await prepareImage(file), mime: 'image/jpeg', today: today(), categories });
-          for (const op of result.operations) found.push(makeRow(op, result.bank));
+          const result = await api.recognize({ image: await prepareImage(file), mime: 'image/jpeg', today: today(), categories, accounts: accountsBrief() });
+          const batch = nextBatch++;
+          for (const op of result.operations) found.push(makeRow(op, result.bank, batch));
           if (result.rejected) {
             failures.value.push(`${file.name || 'Скриншот ' + (i + 1)}: не удалось разобрать сумму у операций: ${result.rejected}. Внесите их вручную`);
           }
@@ -154,11 +176,11 @@ export const ImportView = {
       progress.value = 'Разбираю, что вы сказали…';
       failures.value = [];
       const categories = state.categories.filter((c) => !c.archived).map((c) => ({ id: c.id, name: c.name, kind: c.kind }));
-      const accounts = state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name, type: a.type }));
       const found = [];
       try {
-        const result = await api.recognize({ text, today: today(), categories, accounts });
-        for (const op of result.operations) found.push(makeRow(op, null));
+        const result = await api.recognize({ text, today: today(), categories, accounts: accountsBrief() });
+        const batch = nextBatch++;
+        for (const op of result.operations) found.push(makeRow(op, null, batch));
         if (!found.length) failures.value.push(`Не нашёл операций в «${text}». Назовите, что купили и сумму`);
       } catch (e) {
         failures.value.push(e.message);
@@ -177,14 +199,18 @@ export const ImportView = {
       try { existing.value = await api.listTransactions(dates[0], isoDate(to)); } catch { existing.value = []; }
     }
 
+    // Одинаковые строки на одном скриншоте — это разные траты (несколько поездок на автобусе),
+    // поэтому повтором считаем только столько строк, сколько таких уже есть:
+    // внесённых раньше и на более раннем скриншоте (его загрузили дважды или операция попала на два).
     function isDuplicate(r) {
       const amount = parseAmount(r.amount);
-      const seen = existing.value.some((t) => t.date === r.date && Number(t.amount) === amount
-        && t.kind === r.kind && t.account_id === r.account_id);
-      // Один и тот же скриншот загрузили дважды или операция попала на два скриншота.
-      const twin = rows.value.some((o) => o !== r && o.include && rows.value.indexOf(o) < rows.value.indexOf(r)
-        && o.date === r.date && parseAmount(o.amount) === amount && o.kind === r.kind && o.note === r.note);
-      return seen || twin;
+      const same = (o) => o.date === r.date && parseAmount(o.amount) === amount && o.kind === r.kind && o.note === r.note;
+      const saved = existing.value.filter((t) => t.date === r.date && Number(t.amount) === amount
+        && t.kind === r.kind && t.account_id === r.account_id).length;
+      const earlier = {};
+      for (const o of rows.value) if (o.batch < r.batch && o.include && same(o)) earlier[o.batch] = (earlier[o.batch] ?? 0) + 1;
+      const place = rows.value.filter((o) => o.batch === r.batch && same(o)).indexOf(r);
+      return place < saved + Math.max(0, ...Object.values(earlier));
     }
 
     const selected = computed(() => rows.value.filter((r) => r.include));
@@ -248,7 +274,7 @@ export const ImportView = {
     return {
       state, admin, step, progress, failures, rows, busy, error, fileInput, accountGroups,
       selected, total, isDuplicate, setKind, save, onFiles, money,
-      shotDate, voice, spoken, listening, speechSupported, startListening, stopListening, recognizeText,
+      shotDate, shotAccount, voice, spoken, listening, speechSupported, startListening, stopListening, recognizeText,
     };
   },
   template: `
@@ -279,6 +305,12 @@ export const ImportView = {
           <input id="shot-date" v-model="shotDate" type="date">
           <small class="hint">Необязательно. Укажите, если даты нет на скриншоте: она будет у всех операций из них. Если оставить пустым, дату определит GigaChat.</small>
         </label>
+        <div class="field">
+          <span>С какой карты операции</span>
+          <account-select v-model="shotAccount" :groups="accountGroups" label="С какой карты операции" placeholder="Определить автоматически"/>
+          <button v-if="shotAccount" type="button" class="link-btn import-clear" @click="shotAccount = null">Определить автоматически</button>
+          <small class="hint">Необязательно. Если не выбрать, GigaChat поищет карту на скриншоте. Если её там не видно, подставится карта, которую вы выбирали для этого банка в прошлый раз.</small>
+        </div>
         <button class="drop-zone" @click="fileInput.click()">
           <span class="drop-icon" aria-hidden="true">📷</span>
           <b>Выберите скриншоты из банка</b>
@@ -309,9 +341,9 @@ export const ImportView = {
             <label class="check"><input type="checkbox" v-model="r.include" :aria-label="'Добавить строку ' + (i + 1)"></label>
             <input v-model="r.date" type="date" class="import-date" aria-label="Дата">
             <div class="segmented mini" role="radiogroup" aria-label="Тип">
-              <button type="button" :class="{ active: r.kind === 'expense' }" @click="setKind(r, 'expense')">Расход</button>
-              <button type="button" :class="{ active: r.kind === 'income' }" @click="setKind(r, 'income')">Доход</button>
+              <button type="button" :class="['k-expense', { active: r.kind === 'expense' }]" @click="setKind(r, 'expense')">Расход</button>
               <button type="button" :class="{ active: r.kind === 'transfer' }" @click="setKind(r, 'transfer')">Перевод</button>
+              <button type="button" :class="['k-income', { active: r.kind === 'income' }]" @click="setKind(r, 'income')">Доход</button>
             </div>
             <span class="import-amount"><input v-model="r.amount" inputmode="decimal" aria-label="Сумма"> ₽</span>
           </div>
@@ -331,6 +363,11 @@ export const ImportView = {
             <span>Дата для следующих скриншотов</span>
             <input v-model="shotDate" type="date">
           </label>
+          <div class="field">
+            <span>Карта для следующих скриншотов</span>
+            <account-select v-model="shotAccount" :groups="accountGroups" label="Карта для следующих скриншотов" placeholder="Определить автоматически"/>
+            <button v-if="shotAccount" type="button" class="link-btn import-clear" @click="shotAccount = null">Определить автоматически</button>
+          </div>
           <button class="btn ghost" @click="fileInput.click()"><icon name="plus"/> Ещё скриншот</button>
         </template>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>

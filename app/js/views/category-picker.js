@@ -1,11 +1,11 @@
 // <category-picker v-model="id" :kind="'expense'"/> — выбор категории: поиск по буквам и разделы.
 // После выбора список сворачивается, чтобы до следующих полей не приходилось листать.
 import { ref, reactive, computed, watch } from 'vue';
-import { state } from '../store.js?v=2610301540';
-import { localGet, localSet, searchByName } from '../utils.js?v=2610301540';
-import { categoryTree, groupLabel } from '../categories.js?v=2610301540';
-import { toggleIn } from '../ui-state.js?v=2610301540';
-import { Icon } from '../components.js?v=2610301540';
+import { state } from '../store.js?v=2610301605';
+import { localGet, localSet, searchByName } from '../utils.js?v=2610301605';
+import { categoryTree, groupLabel } from '../categories.js?v=2610301605';
+import { toggleIn } from '../ui-state.js?v=2610301605';
+import { Icon } from '../components.js?v=2610301605';
 
 const lastGroupKey = (kind) => `last-cat-group-${kind}`;
 
