@@ -1031,3 +1031,24 @@ html.modal-open { overflow: hidden; }
 /* Заголовок-переключатель и значки вида диаграммы — в одной строке. */
 .flow-head .title-switch { padding: 4px 10px; font-size: clamp(.82rem, 4.1vw, 1.05rem); white-space: nowrap; }
 .flow-head .segmented.mini button { display: grid; place-items: center; padding: 5px 9px; }
+
+/* Рекомендованные лимиты */
+.limits-head { flex-wrap: nowrap; }
+.limits-head h2 { min-width: 0; }
+.limits-head .btn { flex: none; }
+.advisor { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.advisor-busy { display: flex; align-items: center; gap: 10px; padding: 12px 0; color: var(--text-2); }
+.advisor-busy .spinner { width: 20px; height: 20px; }
+.advice-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+.advice-row.off { opacity: .55; }
+.advice-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.advice-text b { font-weight: 600; overflow-wrap: anywhere; line-height: 1.25; }
+.advice-text small { color: var(--muted); font-size: .78rem; }
+.advice-text .advice-reason { color: var(--text-2); }
+.advice-input { flex: none; display: flex; align-items: center; gap: 4px; font-weight: 600; }
+.advice-input input {
+  width: 84px; min-height: 40px; padding: 6px 8px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+}
+.advice-total { margin: 0; padding-top: 8px; border-top: 1px solid var(--border); }
+.advisor-actions { justify-content: flex-end; }

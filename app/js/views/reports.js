@@ -1,11 +1,12 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301646';
-import { state } from '../store.js?v=2610301646';
-import { expanded, toggleIn } from '../ui-state.js?v=2610301646';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301646';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301646';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301646';
-import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610301646';
+import { api } from '../api.js?v=2610301653';
+import { state, isAdmin } from '../store.js?v=2610301653';
+import { LimitAdvisor } from './limit-advisor.js?v=2610301653';
+import { expanded, toggleIn } from '../ui-state.js?v=2610301653';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301653';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301653';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301653';
+import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610301653';
 
 // Выбранный вид запоминается на устройстве.
 function remembered(key, fallback) {
@@ -15,7 +16,7 @@ function remembered(key, fallback) {
 }
 
 export const ReportsView = {
-  components: { Icon, MonthSwitcher, RingChart, TrendChart },
+  components: { Icon, MonthSwitcher, RingChart, TrendChart, LimitAdvisor },
   directives: { longPress: vLongPress },
   emits: ['edit', 'copy'],
   setup() {
@@ -104,6 +105,8 @@ export const ReportsView = {
     });
 
     const limits = computed(() => limitStatus(state.transactions));
+    const advising = ref(false); // открыт расчёт рекомендованных лимитов
+    const admin = computed(isAdmin);
 
     // Динамика по месяцам: операции за выбранный период загружаются один раз.
     const history = ref([]);
@@ -145,7 +148,7 @@ export const ReportsView = {
     });
 
     return {
-      state, open, toggle, spendView, trendMode, months, subject, drill, spending, ring, selectSlice, limits,
+      state, advising, admin, open, toggle, spendView, trendMode, months, subject, drill, spending, ring, selectSlice, limits,
       history, historyError, trendSeries, expenseGroups, expenseTree, groupLabel, Math, flowKind, flow, toggleFlow,
       picked, pickedList, catById, accName, shortDate,
       money: rub, // в отчётах — итоги, показываем без копеек
@@ -165,7 +168,7 @@ export const ReportsView = {
             {{ flow.title }} <icon name="swap" :size="16"/></button></h2>
           <div class="segmented mini" role="radiogroup" aria-label="Вид">
             <button :class="{ active: spendView === 'ring' }" role="radio" :aria-checked="spendView === 'ring'" title="Кольцевая диаграмма" aria-label="Кольцевая диаграмма" @click="spendView = 'ring'"><icon name="ring" :size="20"/></button>
-            <button :class="{ active: spendView === 'bars' }" role="radio" :aria-checked="spendView === 'bars'" title="Столбчатая диаграмма" aria-label="Столбчатая диаграмма" @click="spendView = 'bars'"><icon name="bars" :size="20"/></button>
+            <button :class="{ active: spendView === 'bars' }" role="radio" :aria-checked="spendView === 'bars'" title="Полосы" aria-label="Полосы" @click="spendView = 'bars'"><icon name="bars" :size="20"/></button>
           </div>
         </div>
         <p v-if="!spending.rows.length" class="empty">{{ flow.empty }}</p>
@@ -230,8 +233,12 @@ export const ReportsView = {
       </div>
 
       <div class="card pad">
-        <div class="card-head"><h2>Лимиты на месяц</h2></div>
-        <p v-if="!limits.length" class="empty">Лимиты не заданы. Их можно указать для разделов и категорий в «Настройки → Категории».</p>
+        <div class="card-head limits-head">
+          <h2>Лимиты на месяц</h2>
+          <button v-if="admin && !state.offline && !advising" type="button" class="btn small" @click="advising = true">Рассчитать</button>
+        </div>
+        <limit-advisor v-if="advising" @close="advising = false"/>
+        <p v-if="!limits.length && !advising" class="empty">Лимиты не заданы. Их можно указать для разделов и категорий в «Настройки → Категории».</p>
         <ul class="limits">
           <li v-for="l in limits" :key="l.id">
             <div class="limit-top">

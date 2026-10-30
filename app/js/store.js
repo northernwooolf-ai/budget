@@ -1,7 +1,7 @@
 // Состояние приложения и действия над ним. Экраны читают state и вызывают эти функции.
 import { reactive } from 'vue';
-import { api, isDemo } from './api.js?v=2610301646';
-import { monthStart, addMonths, isoDate } from './utils.js?v=2610301646';
+import { api, isDemo } from './api.js?v=2610301653';
+import { monthStart, addMonths, isoDate } from './utils.js?v=2610301653';
 
 export const state = reactive({
   isDemo,
@@ -234,6 +234,10 @@ export const saveStartBalances = (changes) => act(async () => {
 }, 'Стартовые остатки сохранены');
 export const deleteAccount = (id) => act(() => api.deleteAccount(id), 'Счёт удалён');
 export const saveCategory = (c) => act(() => api.saveCategory(c), 'Категория сохранена');
+// Лимиты сразу для нескольких категорий: [{ category, monthly_limit }].
+export const saveCategoryLimits = (changes) => act(async () => {
+  for (const { category, monthly_limit } of changes) await api.saveCategory({ ...category, monthly_limit });
+}, 'Лимиты сохранены');
 export const deleteCategory = (id) => act(() => api.deleteCategory(id), 'Категория удалена');
 export const saveCategoryGroup = (g) => act(() => api.saveCategoryGroup(g), 'Раздел сохранён');
 export const deleteCategoryGroup = (id) =>

@@ -1,13 +1,13 @@
 // Операции со скриншотов из банка или надиктованные голосом: GigaChat находит операции, вы проверяете и добавляете.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610301646';
-import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610301646';
-import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610301646';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301646';
-import { Icon, Modal } from '../components.js?v=2610301646';
-import { bankKey, AccountSelect } from '../cards.js?v=2610301646';
-import { CategoryPicker } from './category-picker.js?v=2610301646';
-import { speechSupported, listen } from '../speech.js?v=2610301646';
+import { api } from '../api.js?v=2610301653';
+import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610301653';
+import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610301653';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301653';
+import { Icon, Modal } from '../components.js?v=2610301653';
+import { bankKey, AccountSelect } from '../cards.js?v=2610301653';
+import { CategoryPicker } from './category-picker.js?v=2610301653';
+import { speechSupported, listen } from '../speech.js?v=2610301653';
 
 // ---------- Память: какой магазин в какую категорию, какой банк на какой счёт ----------
 

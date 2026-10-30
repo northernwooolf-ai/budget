@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610301646';
-import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610301646';
-import { pick } from './utils.js?v=2610301646';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610301653';
+import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610301653';
+import { pick } from './utils.js?v=2610301653';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -142,6 +142,7 @@ export default {
   // Та же функция разбирает надиктованный текст ({ text }) и отвечает на вопросы помощнику ({ chat }).
   recognize: (body) => invokeFunction('recognize', body),
   ask: (body) => invokeFunction('recognize', body),
+  adviseLimits: (body) => invokeFunction('recognize', body),
   checkRecognizer: () => invokeFunction('recognize', { check: true }),
 
   // Изменения, сделанные вторым человеком, приходят сразу.
