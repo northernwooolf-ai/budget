@@ -1,8 +1,8 @@
 import { ref, reactive } from 'vue';
-import { api } from '../api.js?v=2610301632';
-import { state, setupHousehold, signOut } from '../store.js?v=2610301632';
-import { Icon } from '../components.js?v=2610301632';
-import { localGet, localSet } from '../utils.js?v=2610301632';
+import { api } from '../api.js?v=2610301642';
+import { state, setupHousehold, signOut } from '../store.js?v=2610301642';
+import { Icon } from '../components.js?v=2610301642';
+import { localGet, localSet } from '../utils.js?v=2610301642';
 
 const EMAIL_KEY = 'last-email';
 

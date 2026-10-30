@@ -1026,3 +1026,4 @@ html.modal-open { overflow: hidden; }
   font: inherit; font-weight: 700; text-align: left;
 }
 .title-switch:active { filter: brightness(.92); }
+.money-plate-check { margin-top: 4px; font-weight: 500; }
