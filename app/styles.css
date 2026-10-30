@@ -146,7 +146,7 @@ button { cursor: pointer; }
 .fab {
   position: fixed; right: 18px; bottom: calc(var(--nav-h) + 18px + env(safe-area-inset-bottom)); z-index: 21;
   width: 60px; height: 60px; border-radius: 50%; border: 0;
-  background: var(--primary); color: var(--primary-ink); box-shadow: 0 6px 18px rgba(15, 118, 110, .35);
+  background: var(--primary); color: var(--primary-ink); box-shadow: 0 6px 18px rgb(0 0 0 / .35);
   display: grid; place-items: center;
 }
 
@@ -583,20 +583,10 @@ fieldset.plain:disabled { opacity: .75; }
 
 /* ---------- Кэшбэки ---------- */
 .cb-best { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.cb-pay {
-  /* Одинаковые колонки во всех строках, чтобы карты и проценты стояли ровно друг под другом. */
-  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 36%) 3.2em; gap: 14px; align-items: center;
-  padding: 4px 6px; margin: 0 -6px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left;
-  box-sizing: content-box;
-}
-.cb-pay:hover, .cb-pay:active { background: var(--surface-2); }
-.cb-pay .cb-label { min-width: 0; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cb-pay .cb-account { display: flex; align-items: center; justify-content: flex-start; gap: 6px; min-width: 0; text-align: left; }
-.cb-pay .cb-account .acc-name-cut { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pay-sheet { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 8px 0; }
 .pay-card-name { font-size: 1.05rem; }.cb-label { font-weight: 600; overflow-wrap: anywhere; }
 .cb-account { color: var(--text-2); font-size: .88rem; text-align: right; }
-.cb-pct { color: var(--primary); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+
 .cb-add { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .cb-card.current .cb-card-head { color: var(--primary); }
 @media (max-width: 560px) { .cb-add { grid-template-columns: 1fr 70px; } .cb-add .acc-select { grid-column: 1 / -1; } .cb-add .btn { grid-column: 1 / -1; } }
@@ -848,18 +838,7 @@ button.plate { -webkit-appearance: none; appearance: none; }
 .fab.hidden { transform: translateY(140%); opacity: 0; pointer-events: none; }
 .fab.open svg { transform: rotate(45deg); }
 .fab svg { transition: transform .15s; }
-/* Плашки «Скриншот» и «Операция» столбиком слева от раскрытого «+», одной ширины,
-   по центру высоты кнопки (две плашки по 40px + 8px выше «+» на 28px, отсюда сдвиг на 14px). */
 .fab-backdrop { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .25); }
-.fab-menu {
-  position: fixed; z-index: 21; right: 88px; bottom: calc(var(--nav-h) + 4px + env(safe-area-inset-bottom));
-  display: grid; gap: 8px;
-}
-.fab-pill {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px; white-space: nowrap;
-  border: 0; border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-weight: 600;
-  box-shadow: 0 4px 14px rgb(0 0 0 / .3);
-}
 @media (prefers-reduced-motion: reduce) { .fab svg { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .fab { transition: none; } }
 
@@ -899,9 +878,6 @@ button.plate { -webkit-appearance: none; appearance: none; }
 @media (prefers-reduced-motion: reduce) { .drop-zone.listening { animation: none; } }
 
 /* ---------- Помощник ---------- */
-.chat-modal .modal { height: 92vh; }
-@media (min-width: 640px) { .chat-modal .modal { height: min(720px, 92vh); } }
-.chat-modal .modal-body { flex: 1; }
 .chat { display: flex; flex-direction: column; gap: 10px; }
 .chat-suggest { display: flex; flex-wrap: wrap; gap: 8px; }
 .chat-suggest .chip { text-align: left; color: var(--text); }
@@ -914,7 +890,11 @@ button.plate { -webkit-appearance: none; appearance: none; }
 .bubble.typing { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
 .bubble.typing .spinner { width: 16px; height: 16px; border-width: 2px; }
 .chat-clear { align-self: center; }
-.chat-form { display: flex; align-items: center; gap: 8px; width: 100%; }
+.chat-form {
+  position: sticky; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); z-index: 4;
+  padding: 8px 0 10px; background: var(--bg);
+}
+.chat-fields { display: flex; align-items: center; gap: 8px; width: 100%; }
 .chat-form input {
   flex: 1; min-width: 0; min-height: 44px; padding: 8px 12px;
   border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
@@ -959,3 +939,45 @@ html.modal-open { overflow: hidden; }
 /* Сумма — в одну строку с датой, тип операции — строкой ниже. */
 .import-top .segmented { order: 1; }
 .import-amount input { width: 90px; }
+
+/* Круглые кнопки по дуге вокруг «+»: подложка акцентного цвета, как у самой кнопки.
+   Отсчёт от центра «+»: кнопка 52px ровно под ним, затем сдвиг на радиус 90px. */
+.fab-round {
+  position: fixed; z-index: 21; right: 22px; bottom: calc(var(--nav-h) + 22px + env(safe-area-inset-bottom));
+  width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
+  background: var(--primary); color: var(--primary-ink); box-shadow: 0 4px 14px rgb(0 0 0 / .35);
+  transform: translate(var(--x), var(--y)); animation: fab-pop .16s ease-out;
+}
+.fab-round.arc-1 { --x: -90px; --y: 0px; }
+.fab-round.arc-2 { --x: -64px; --y: -64px; }
+.fab-round.arc-3 { --x: 0px; --y: -90px; }
+@keyframes fab-pop { from { transform: translate(0, 0) scale(.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fab-round { animation: none; } }
+
+/* Помощник — отдельная вкладка: поле вопроса внизу экрана, над меню. */
+.main.main-chat { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+.chat-page { min-height: calc(100dvh - var(--nav-h) - env(safe-area-inset-bottom)); gap: 8px; }
+.chat-page .chat { flex: 1; }
+.chat-page .chat > div:last-child { scroll-margin-bottom: 80px; }
+@media (min-width: 900px) {
+  .main.main-chat { padding-bottom: 0; }
+  .chat-page { min-height: 100dvh; }
+  .chat-form { bottom: 0; }
+}
+
+/* Кэшбэки: категория одной строкой, рядом карты с процентом прямо на карте */
+.cb-line { display: flex; align-items: center; gap: 12px; min-height: 34px; }
+.cb-line .cb-label { flex: 1; min-width: 0; line-height: 1.2; }
+.cb-cards { flex: none; max-width: 65%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+.cb-card-btn { padding: 0; border: 0; border-radius: 5px; background: none; display: block; }
+.cb-card-btn:hover, .cb-card-btn:active { filter: brightness(1.15); }
+.card-chip.cb { width: 50px; height: 31px; border-radius: 5px; font-size: 13px; display: block; }
+.cc-percent {
+  position: absolute; right: 4px; bottom: 2px; font-size: 13px; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+.cc-percent.on-dark { color: #fff; text-shadow: 0 0 3px rgb(0 0 0 / .65); }
+.cc-percent.on-light { color: #111; text-shadow: 0 0 3px rgb(255 255 255 / .7); }
+
+/* Строка кэшбэка, которую нужно дозаполнить */
+.cb-row.invalid { border-color: var(--negative); box-shadow: inset 0 0 0 1px var(--negative); }

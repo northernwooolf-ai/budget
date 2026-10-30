@@ -1,14 +1,14 @@
 // Кэшбэки: раз в месяц выбираете по картам («Супермаркеты 7%»), привязываете к своим категориям,
 // а приложение подсказывает, какой картой что выгоднее покупать.
 import { ref, computed, watch, nextTick } from 'vue';
-import { api } from '../api.js?v=2610301506';
-import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610301506';
-import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610301506';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610301506';
-import { Icon, Modal } from '../components.js?v=2610301506';
-import { toggleIn } from '../ui-state.js?v=2610301506';
-import { CardChip, AccountSelect } from '../cards.js?v=2610301506';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301506';
+import { api } from '../api.js?v=2610301540';
+import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610301540';
+import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610301540';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610301540';
+import { Icon, Modal } from '../components.js?v=2610301540';
+import { toggleIn } from '../ui-state.js?v=2610301540';
+import { CardChip, AccountSelect } from '../cards.js?v=2610301540';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301540';
 
 // Карты, по которым бывает кэшбэк: наличные и вклады не нужны.
 const cardAccounts = () => state.accounts
@@ -131,6 +131,7 @@ const CashbackEditor = {
     const loading = ref(true);
     const busy = ref(false);
     const error = ref('');
+    const badKey = ref(null); // строка, которую надо дозаполнить
     const cards = computed(cardAccounts);
     const tree = computed(() => categoryTree('expense'));
     // Выбранная карта: «Добавить» добавляет на неё ещё одну пустую строку кэшбэка.
@@ -217,13 +218,21 @@ const CashbackEditor = {
 
     async function save() {
       error.value = '';
+      badKey.value = null;
+      // Показать, что не так: окно длинное, поэтому сообщение всплывает, а строка подсвечивается и видна на экране.
+      const complain = (r, text) => {
+        error.value = text;
+        badKey.value = r._key;
+        toast(text, 'error');
+        nextTick(() => document.querySelector(`[data-cb-key="${r._key}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+      };
       // Совсем пустые новые строки (добавили и не заполнили) просто пропускаем.
       const filled = rows.value.filter((r) => r.id || r.label.trim() || String(r.percent).trim());
       const out = [];
       for (const r of filled) {
         const percent = parseAmount(r.percent);
-        if (!r.label.trim()) return (error.value = `«${accountName(r.account_id)}»: напишите категорию кэшбэка, как в банке`);
-        if (!(percent > 0 && percent <= 100)) return (error.value = `«${r.label}»: процент — число от 0 до 100`);
+        if (!r.label.trim()) return complain(r, `«${accountName(r.account_id)}»: напишите категорию кэшбэка, как в банке`);
+        if (!(percent > 0 && percent <= 100)) return complain(r, `«${r.label}»: укажите процент от 0 до 100`);
         out.push({ id: r.id, month: isoDate(month.value), account_id: r.account_id, label: r.label.trim(), percent, category_ids: [...r.category_ids] });
       }
       busy.value = true;
@@ -239,7 +248,7 @@ const CashbackEditor = {
     }
 
     return {
-      month, rows, loading, busy, error, cards, tree, cardId, byCard, drafts, currentCard, LABELS,
+      month, rows, loading, busy, error, badKey, cards, tree, cardId, byCard, drafts, currentCard, LABELS,
       shift: (n) => { month.value = addMonths(month.value, n); },
       copyPrevious, addRow, removeRow, chipsOf, unpick, pickingFor, cardGroups, save, monthLabel, groupLabel, categoryLabel,
     };
@@ -258,7 +267,7 @@ const CashbackEditor = {
         <!-- Карта, под ней новые (ещё не сохранённые) строки, под ними кнопка — она съезжает вниз с каждой строкой. -->
         <div class="cb-new stack">
           <account-select v-model="cardId" :groups="cardGroups" label="Карта"/>
-          <cashback-row v-for="r in drafts" :key="r._key" :row="r" :chips="chipsOf(r)"
+          <cashback-row v-for="r in drafts" :key="r._key" :row="r" :chips="chipsOf(r)" :class="{ invalid: badKey === r._key }"
             @remove="removeRow(r)" @pick="pickingFor = r" @unpick="(ids) => unpick(r, ids)"/>
           <button type="button" class="btn" @click="addRow"><icon name="plus"/> Добавить кэшбэк{{ currentCard ? ' на «' + currentCard.name + '»' : '' }}</button>
           <datalist id="cb-labels"><option v-for="l in LABELS" :key="l" :value="l"></option></datalist>
@@ -272,7 +281,7 @@ const CashbackEditor = {
 
         <div v-for="g in byCard" :key="g.account.id" class="cb-card">
           <div class="field-label cb-card-head"><card-chip :account="g.account" size="sm"/> {{ g.account.name }}</div>
-          <cashback-row v-for="r in g.rows" :key="r._key" :row="r" :chips="chipsOf(r)"
+          <cashback-row v-for="r in g.rows" :key="r._key" :row="r" :chips="chipsOf(r)" :class="{ invalid: badKey === r._key }"
             @remove="removeRow(r)" @pick="pickingFor = r" @unpick="(ids) => unpick(r, ids)"/>
         </div>
         <category-checklist v-if="pickingFor" :tree="tree" v-model="pickingFor.category_ids" @close="pickingFor = null"/>
@@ -312,40 +321,46 @@ export const CashbackCard = {
   setup() {
     const editing = ref(false);
     const paying = ref(null);
-    // Для каждой категории кэшбэка («Супермаркеты») — лучшая карта.
-    const best = computed(() => {
-      const map = new Map();
-      for (const c of state.cashbacks) {
-        if (state.accounts.find((a) => a.id === c.account_id)?.archived) continue;
-        const key = c.label.trim().toLowerCase();
-        const cur = map.get(key);
-        if (!cur || Number(c.percent) > Number(cur.percent)) map.set(key, c);
-      }
-      // Порядок — как у карт на главной (по группам, затем как перетащили), у одной карты — по проценту.
+    // Каждая категория кэшбэка («Супермаркеты») — одной строкой, рядом все карты с ней: выгоднейшая первой.
+    const groups = computed(() => {
       const order = new Map(ACCOUNT_TYPES
         .flatMap((t) => state.accounts.filter((a) => typeOf(a).id === t.id).sort(bySort))
         .map((a, i) => [a.id, i]));
       const pos = (c) => order.get(c.account_id) ?? Infinity;
-      return [...map.values()].sort((a, b) => pos(a) - pos(b) || Number(b.percent) - Number(a.percent));
+      const byPercent = (a, b) => Number(b.percent) - Number(a.percent) || pos(a) - pos(b);
+      const map = new Map();
+      for (const c of state.cashbacks) {
+        const account = state.accounts.find((a) => a.id === c.account_id);
+        if (!account || account.archived) continue;
+        const key = c.label.trim().toLowerCase();
+        if (!map.has(key)) map.set(key, { key, label: c.label.trim(), items: [] });
+        map.get(key).items.push(c);
+      }
+      const list = [...map.values()];
+      list.forEach((g) => g.items.sort(byPercent));
+      // Порядок строк — как у карт на главной (по лучшей карте строки), у одной карты — по проценту.
+      return list.sort((a, b) => pos(a.items[0]) - pos(b.items[0]) || byPercent(a.items[0], b.items[0]));
     });
     const IN_MONTH = ['январе', 'феврале', 'марте', 'апреле', 'мае', 'июне', 'июле', 'августе', 'сентябре', 'октябре', 'ноябре', 'декабре'];
     const accountOf = (id) => state.accounts.find((a) => a.id === id);
-    return { state, editing, paying, best, accountName, accountOf, formatPercent, inMonth: IN_MONTH[new Date().getMonth()] };
+    return { editing, paying, groups, accountName, accountOf, formatPercent, inMonth: IN_MONTH[new Date().getMonth()] };
   },
   template: `
     <div class="card pad cashback-card">
       <div class="card-head nowrap-head">
         <h2>💳 Кэшбэк в {{ inMonth }}</h2>
-        <button class="btn small" @click="editing = true">{{ best.length ? 'Изменить' : 'Выбрать' }}</button>
+        <button class="btn small" @click="editing = true">{{ groups.length ? 'Изменить' : 'Выбрать' }}</button>
       </div>
-      <p v-if="!best.length" class="hint">Отметьте, какие кэшбэки вы выбрали в банках в этом месяце, — здесь будет видно, какой картой что выгоднее покупать.</p>
+      <p v-if="!groups.length" class="hint">Отметьте, какие кэшбэки вы выбрали в банках в этом месяце, — здесь будет видно, какой картой что выгоднее покупать.</p>
       <ul v-else class="cb-best">
-        <li v-for="c in best" :key="c.id">
-          <button type="button" class="cb-pay" @click="paying = c">
-            <span class="cb-label">{{ c.label }}</span>
-            <span class="cb-account"><card-chip v-if="accountOf(c.account_id)" :account="accountOf(c.account_id)" size="sm"/><span class="acc-name-cut">{{ accountName(c.account_id) }}</span></span>
-            <b class="cb-pct">{{ formatPercent(c.percent) }}</b>
-          </button>
+        <li v-for="g in groups" :key="g.key" class="cb-line">
+          <span class="cb-label">{{ g.label }}</span>
+          <span class="cb-cards">
+            <button v-for="c in g.items" :key="c.id" type="button" class="cb-card-btn"
+              :aria-label="accountName(c.account_id) + ', кэшбэк ' + formatPercent(c.percent)" :title="accountName(c.account_id)" @click="paying = c">
+              <card-chip :account="accountOf(c.account_id)" size="cb" :percent="formatPercent(c.percent)"/>
+            </button>
+          </span>
         </li>
       </ul>
       <cashback-editor v-if="editing" @close="editing = false"/>

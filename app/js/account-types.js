@@ -1,22 +1,21 @@
 // Группы счетов на главной, в порядке показа.
-// debt: остаток таких счетов — долг (хранится со знаком минус, вводится положительным числом).
+// Остаток у всех счетов вводится и хранится одинаково: плюс — деньги, минус — долг.
 // people: счета людей — плюс значит «должен нам», минус — «мы должны».
 // Внутренние коды lent/borrowed исторические: lent — «Расчёты с людьми», borrowed — «Кредиты и займы».
 export const ACCOUNT_TYPES = [
   { id: 'cash', label: 'Наличные', icon: '💵' },
   { id: 'debit', label: 'Дебетовые карты', icon: '💳' },
-  { id: 'credit', label: 'Кредитные карты', icon: '🏦', debt: true },
+  { id: 'credit', label: 'Кредитные карты', icon: '🏦' },
   { id: 'deposit', label: 'Вклады и накопления', icon: '🐷' },
   { id: 'investment', label: 'Инвестиции', icon: '📈' },
   { id: 'lent', label: 'Расчёты с людьми', icon: '🤝', people: true },
-  { id: 'borrowed', label: 'Кредиты и займы', icon: '🧾', debt: true },
+  { id: 'borrowed', label: 'Кредиты и займы', icon: '🧾' },
 ];
 
 const byId = Object.fromEntries(ACCOUNT_TYPES.map((t) => [t.id, t]));
 
 // Старые записи без типа считаем дебетовыми.
 export const typeOf = (account) => byId[account.type] ?? byId.debit;
-export const isDebt = (typeId) => !!byId[typeId]?.debt;
 
 // Вклады и инвестиции можно отметить ликвидными: деньги с них снимаются в любой день без потерь.
 export const canBeLiquid = (typeId) => typeId === 'deposit' || typeId === 'investment';

@@ -1,23 +1,24 @@
 import { createApp, ref, onMounted, onBeforeUnmount } from 'vue';
-import { state, init } from './store.js?v=2610301506';
-import { localGet, localSet } from './utils.js?v=2610301506';
-import { Icon } from './components.js?v=2610301506';
-import { appearance } from './appearance.js?v=2610301506';
-import { lock } from './lock.js?v=2610301506';
-import { LockScreen } from './views/lock-screen.js?v=2610301506';
-import { AuthView, OnboardingView } from './views/auth.js?v=2610301506';
-import { OperationsView, TxEditor } from './views/operations.js?v=2610301506';
-import { HomeView } from './views/home.js?v=2610301506';
-import { ReportsView } from './views/reports.js?v=2610301506';
-import { SettingsView } from './views/settings.js?v=2610301506';
-import { ImportView } from './views/import.js?v=2610301506';
-import { AssistantChat } from './views/assistant.js?v=2610301506';
-import { simpleView } from './ui-state.js?v=2610301506';
+import { state, init } from './store.js?v=2610301540';
+import { localGet, localSet } from './utils.js?v=2610301540';
+import { Icon } from './components.js?v=2610301540';
+import { appearance } from './appearance.js?v=2610301540';
+import { lock } from './lock.js?v=2610301540';
+import { LockScreen } from './views/lock-screen.js?v=2610301540';
+import { AuthView, OnboardingView } from './views/auth.js?v=2610301540';
+import { OperationsView, TxEditor } from './views/operations.js?v=2610301540';
+import { HomeView } from './views/home.js?v=2610301540';
+import { ReportsView } from './views/reports.js?v=2610301540';
+import { SettingsView } from './views/settings.js?v=2610301540';
+import { ImportView } from './views/import.js?v=2610301540';
+import { AssistantChat } from './views/assistant.js?v=2610301540';
+import { simpleView } from './ui-state.js?v=2610301540';
 
 const TABS = [
   { id: 'home', label: 'Главная', icon: 'home' },
   { id: 'ops', label: 'Операции', icon: 'list' },
   { id: 'reports', label: 'Отчёты', icon: 'chart' },
+  { id: 'ask', label: 'Помощник', icon: 'chat' },
   { id: 'settings', label: 'Настройки', icon: 'settings' },
 ];
 
@@ -29,14 +30,12 @@ const App = {
     const editor = ref(null);
     const setTab = (id) => { tab.value = id; localSet('tab', id); window.scrollTo(0, 0); };
     const openEditor = (tx) => { editor.value = { tx }; };
-    // «+» сначала раскрывает плашки: новая операция, голосом, со скриншота или вопрос помощнику.
+    // «+» сначала раскрывает круглые кнопки по дуге: новая операция, голосом или со скриншота.
     const fabOpen = ref(false);
     const importing = ref(null); // 'shot' или 'voice'
-    const asking = ref(false);
     const fabPick = (what) => {
       fabOpen.value = false;
       if (what === 'tx') openEditor(null);
-      else if (what === 'ask') asking.value = true;
       else importing.value = what;
     };
 
@@ -54,7 +53,7 @@ const App = {
 
     const savedAtLabel = (ts) => new Date(ts).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-    return { state, appearance, lock, TABS, tab, editor, setTab, openEditor, fabHidden, fabOpen, fabPick, importing, asking, savedAtLabel, simpleView };
+    return { state, appearance, lock, TABS, tab, editor, setTab, openEditor, fabHidden, fabOpen, fabPick, importing, savedAtLabel, simpleView };
   },
   template: `
     <div v-if="appearance.bg" class="app-bg" :style="{ backgroundImage: 'url(' + appearance.bg + ')' }" aria-hidden="true"></div>
@@ -74,22 +73,22 @@ const App = {
           <icon :name="t.icon" :size="22"/><span>{{ t.label }}</span>
         </button>
         <button class="btn primary nav-add" @click="openEditor(null)"><icon name="plus"/> Добавить операцию</button>
-        <button v-if="!state.offline" class="btn nav-add" @click="importing = 'voice'">🎙️ Надиктовать</button>
-        <button v-if="!state.offline" class="btn nav-add nav-ask" @click="asking = true">💬 Спросить помощника</button>
+        <button v-if="!state.offline" class="btn nav-add" @click="importing = 'shot'"><icon name="camera"/> Загрузить скриншот</button>
+        <button v-if="!state.offline" class="btn nav-add" @click="importing = 'voice'"><icon name="mic"/> Надиктовать</button>
       </nav>
-      <main class="main">
+      <main :class="['main', { 'main-chat': tab==='ask' && !simpleView }]">
         <home-view v-if="tab==='home' || simpleView" @edit="openEditor"/>
         <operations-view v-else-if="tab==='ops'" @edit="openEditor"/>
         <reports-view v-else-if="tab==='reports'" @edit="openEditor"/>
+        <assistant-chat v-else-if="tab==='ask'"/>
         <settings-view v-else/>
       </main>
       <template v-if="(tab==='ops' || tab==='home') && !state.offline && !simpleView">
         <div v-if="fabOpen" class="fab-backdrop" @click="fabOpen = false"></div>
-        <div v-if="fabOpen" class="fab-menu" role="menu">
-          <button type="button" class="fab-pill" role="menuitem" @click="fabPick('ask')"><span aria-hidden="true">💬</span> Спросить</button>
-          <button type="button" class="fab-pill" role="menuitem" @click="fabPick('shot')"><span aria-hidden="true">📷</span> Скриншот</button>
-          <button type="button" class="fab-pill" role="menuitem" @click="fabPick('voice')"><span aria-hidden="true">🎙️</span> Диктовать</button>
-          <button type="button" class="fab-pill" role="menuitem" @click="fabPick('tx')"><span aria-hidden="true">🪙</span> Операция</button>
+        <div v-if="fabOpen" class="fab-arc" role="menu" aria-label="Что добавить">
+          <button type="button" class="fab-round arc-1" role="menuitem" title="Скриншот" aria-label="Скриншот" @click="fabPick('shot')"><icon name="camera" :size="24"/></button>
+          <button type="button" class="fab-round arc-2" role="menuitem" title="Диктовать" aria-label="Диктовать" @click="fabPick('voice')"><icon name="mic" :size="24"/></button>
+          <button type="button" class="fab-round arc-3" role="menuitem" title="Новая операция" aria-label="Новая операция" @click="fabPick('tx')"><icon name="coin" :size="24"/></button>
         </div>
         <button :class="['fab', { hidden: fabHidden, open: fabOpen }]" :aria-expanded="fabOpen" aria-haspopup="menu"
           aria-label="Добавить" @click="fabOpen = !fabOpen">
@@ -98,7 +97,6 @@ const App = {
       </template>
       <tx-editor v-if="editor" :tx="editor.tx" @close="editor = null"/>
       <import-view v-if="importing" :mode="importing" @close="importing = null"/>
-      <assistant-chat v-if="asking" @close="asking = false"/>
     </div>
     <div v-if="state.toast" :class="['toast', state.toast.type]" role="status">{{ state.toast.text }}</div>`,
 };

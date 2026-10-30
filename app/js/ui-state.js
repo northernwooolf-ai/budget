@@ -1,7 +1,7 @@
 // Какие разделители раскрыты. При каждом запуске приложения всё свёрнуто,
 // а пока приложение открыто, раскрытое остаётся раскрытым при переходах между экранами.
 import { reactive, ref, watch } from 'vue';
-import { localGet, localSet } from './utils.js?v=2610301506';
+import { localGet, localSet } from './utils.js?v=2610301540';
 
 export const expanded = {
   accountGroups: reactive(new Set()),  // группы счетов на главной

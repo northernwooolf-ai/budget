@@ -1,13 +1,13 @@
 // Операции со скриншотов из банка или надиктованные голосом: GigaChat находит операции, вы проверяете и добавляете.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610301506';
-import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610301506';
-import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610301506';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301506';
-import { Icon, Modal } from '../components.js?v=2610301506';
-import { bankKey, AccountSelect } from '../cards.js?v=2610301506';
-import { CategoryPicker } from './category-picker.js?v=2610301506';
-import { speechSupported, listen } from '../speech.js?v=2610301506';
+import { api } from '../api.js?v=2610301540';
+import { state, isAdmin, importTransactions, toast } from '../store.js?v=2610301540';
+import { money, parseAmount, amountToInput, today, isoDate, parseIso, localGet, localSet, bySort } from '../utils.js?v=2610301540';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301540';
+import { Icon, Modal } from '../components.js?v=2610301540';
+import { bankKey, AccountSelect } from '../cards.js?v=2610301540';
+import { CategoryPicker } from './category-picker.js?v=2610301540';
+import { speechSupported, listen } from '../speech.js?v=2610301540';
 
 // ---------- Память: какой магазин в какую категорию, какой банк на какой счёт ----------
 
@@ -63,6 +63,8 @@ export const ImportView = {
   emits: ['close'],
   setup(props, { emit }) {
     const voice = props.mode === 'voice';
+    // Дата, указанная вручную, важнее даты со скриншота: на нём её бывает не видно.
+    const shotDate = ref('');
     const admin = isAdmin();
     const step = ref('pick');        // pick → work → review
     const progress = ref('');
@@ -84,7 +86,7 @@ export const ImportView = {
       return reactive({
         key: crypto.randomUUID(),
         include: true,
-        date: op.date ?? today(),
+        date: (!voice && shotDate.value) || op.date || today(),
         amount: amountToInput(op.amount),
         kind: op.direction,
         note: op.description,
@@ -246,7 +248,7 @@ export const ImportView = {
     return {
       state, admin, step, progress, failures, rows, busy, error, fileInput, accountGroups,
       selected, total, isDuplicate, setKind, save, onFiles, money,
-      voice, spoken, listening, speechSupported, startListening, stopListening, recognizeText,
+      shotDate, voice, spoken, listening, speechSupported, startListening, stopListening, recognizeText,
     };
   },
   template: `
@@ -272,6 +274,11 @@ export const ImportView = {
       </div>
 
       <div v-else-if="step === 'pick'" class="import-pick">
+        <label class="field">
+          <span>За какую дату скриншоты</span>
+          <input id="shot-date" v-model="shotDate" type="date">
+          <small class="hint">Необязательно. Укажите, если даты нет на скриншоте: она будет у всех операций из них. Если оставить пустым, дату определит GigaChat.</small>
+        </label>
         <button class="drop-zone" @click="fileInput.click()">
           <span class="drop-icon" aria-hidden="true">📷</span>
           <b>Выберите скриншоты из банка</b>
@@ -319,7 +326,13 @@ export const ImportView = {
         </div>
 
         <button v-if="voice" class="btn ghost" @click="step = 'pick'"><icon name="plus"/> Надиктовать ещё</button>
-        <button v-else class="btn ghost" @click="fileInput.click()"><icon name="plus"/> Ещё скриншот</button>
+        <template v-else>
+          <label class="field">
+            <span>Дата для следующих скриншотов</span>
+            <input v-model="shotDate" type="date">
+          </label>
+          <button class="btn ghost" @click="fileInput.click()"><icon name="plus"/> Ещё скриншот</button>
+        </template>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       </div>
 

@@ -12,7 +12,7 @@ export const rub = (v) => money(Math.trunc(Number(v) || 0));
 
 // «1 234,50» → 1234.5; NaN, если ввели не число.
 export function parseAmount(s) {
-  const n = Number(String(s ?? '').replace(/[\s ]/g, '').replace(',', '.'));
+  const n = Number(String(s ?? '').replace(/[\s ]/g, '').replace(',', '.').replace(/^[−–—]/, '-'));
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN;
 }
 

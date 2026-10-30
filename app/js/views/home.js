@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301506';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301506';
-import { limitStatus } from '../categories.js?v=2610301506';
-import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301506';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301506';
-import { ACCOUNT_TYPES, typeOf, isDebt, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301506';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610301506';
-import { useLookups } from './operations.js?v=2610301506';
-import { CashbackCard } from './cashback.js?v=2610301506';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301506';
+import { api } from '../api.js?v=2610301540';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301540';
+import { limitStatus } from '../categories.js?v=2610301540';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301540';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301540';
+import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301540';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610301540';
+import { useLookups } from './operations.js?v=2610301540';
+import { CashbackCard } from './cashback.js?v=2610301540';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301540';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -66,8 +66,7 @@ export const AccountEditor = {
       type,
       name: a.name ?? '',
       icon: a.icon ?? typeOf({ type }).icon,
-      // Долги вводятся положительным числом, а хранятся со знаком минус.
-      initial_balance: amountToInput(isDebt(type) ? -initial : initial),
+      initial_balance: amountToInput(initial),
       credit_limit: amountToInput(a.credit_limit),
       archived: a.archived ?? false,
       sort: a.sort ?? state.accounts.length + 1,
@@ -89,18 +88,12 @@ export const AccountEditor = {
       try { form.card_image = await cardImageFromFile(file); } catch { error.value = 'Не удалось прочитать картинку'; }
     }
     const balanceLabel = computed(() => ({
-      credit: 'Долг по карте на начало учёта, ₽',
-      borrowed: 'Сколько осталось выплатить на начало учёта, ₽',
       lent: 'Расчёт на начало учёта, ₽: плюс — должны нам, минус — мы должны',
-    }[form.type] ?? 'Остаток на начало учёта, ₽'));
+    }[form.type] ?? 'Остаток на начало учёта, ₽: минус — это долг'));
 
     watch(() => form.type, (t, old) => {
       // Значок по умолчанию следует за типом, пока его не выбрали вручную.
       if (form.icon === typeOf({ type: old }).icon) form.icon = typeOf({ type: t }).icon;
-      // Для долговых счетов в поле вводится сумма долга, для остальных — остаток.
-      // При смене одного на другое меняем знак, чтобы реальный остаток не изменился.
-      const v = parseAmount(form.initial_balance);
-      if (isDebt(t) !== isDebt(old) && v) form.initial_balance = amountToInput(-v);
     });
 
     async function save() {
@@ -117,7 +110,7 @@ export const AccountEditor = {
         await saveAccount({
           ...form,
           name: form.name.trim(),
-          initial_balance: isDebt(form.type) ? -value : value,
+          initial_balance: value,
           credit_limit: form.type === 'credit' ? limit : null,
           card_last4: last4 || null,
           // Поле отправляем, только когда оно важно: так счета сохраняются и до обновления базы.
@@ -201,17 +194,15 @@ export const AccountEditor = {
     </modal>`,
 };
 
-// Стартовые остатки всех счетов в одной форме. Для долговых счетов вводится сумма долга.
+// Стартовые остатки всех счетов в одной форме. Минус — это долг, как и в карточке счёта.
 const StartBalances = {
   components: { Modal },
   emits: ['close'],
   setup(props, { emit }) {
     const groups = ACCOUNT_TYPES.map((t) => ({
       ...t,
-      rows: state.accounts.filter((a) => !a.archived && typeOf(a).id === t.id).sort(bySort).map((a) => {
-        const initial = Number(a.initial_balance);
-        return reactive({ account: a, value: amountToInput(t.debt ? -initial : initial) });
-      }),
+      rows: state.accounts.filter((a) => !a.archived && typeOf(a).id === t.id).sort(bySort)
+        .map((a) => reactive({ account: a, value: amountToInput(Number(a.initial_balance)) })),
     })).filter((g) => g.rows.length);
     const busy = ref(false);
     const error = ref('');
@@ -223,8 +214,7 @@ const StartBalances = {
         for (const r of g.rows) {
           const v = r.value === '' ? 0 : parseAmount(r.value);
           if (Number.isNaN(v)) return (error.value = `«${r.account.name}»: сумма должна быть числом`);
-          const initial = g.debt ? -v : v;
-          if (initial !== Number(r.account.initial_balance)) changes.push({ account: r.account, initial_balance: initial });
+          if (v !== Number(r.account.initial_balance)) changes.push({ account: r.account, initial_balance: v });
         }
       }
       if (!changes.length) return emit('close');
@@ -240,10 +230,10 @@ const StartBalances = {
   template: `
     <modal title="Стартовые остатки" @close="$emit('close')">
       <form id="start-form" class="stack" @submit.prevent="save">
-        <p class="hint">Сколько денег было на каждом счёте в момент, с которого вы начинаете учёт.
+        <p class="hint">Сколько денег было на каждом счёте в момент, с которого вы начинаете учёт. Долг пишите с минусом.
           Дальше остатки будут считаться сами по операциям и переводам.</p>
         <div v-for="g in groups" :key="g.id" class="stack start-group">
-          <div class="field-label">{{ g.icon }} {{ g.label }}{{ g.debt ? ' — сумма долга' : '' }}</div>
+          <div class="field-label">{{ g.icon }} {{ g.label }}</div>
           <label v-for="r in g.rows" :key="r.account.id" class="start-row">
             <span class="start-name">{{ r.account.icon }} {{ r.account.name }}</span>
             <span class="start-input"><input v-model="r.value" inputmode="decimal" placeholder="0"

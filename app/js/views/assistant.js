@@ -2,12 +2,12 @@
 // которую приложение собирает здесь же: остатки, кэшбэки, итоги по категориям за 13 месяцев
 // и операции последних двух месяцев. Готовые итоги считаем сами — модели плохо даётся сложение.
 import { ref, reactive, nextTick, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610301506';
-import { state } from '../store.js?v=2610301506';
-import { isoDate, addMonths, monthStart, today, bySort } from '../utils.js?v=2610301506';
-import { ACCOUNT_TYPES, typeOf, creditState } from '../account-types.js?v=2610301506';
-import { Icon, Modal } from '../components.js?v=2610301506';
-import { speechSupported, listen } from '../speech.js?v=2610301506';
+import { api } from '../api.js?v=2610301540';
+import { state } from '../store.js?v=2610301540';
+import { isoDate, addMonths, monthStart, today, bySort } from '../utils.js?v=2610301540';
+import { ACCOUNT_TYPES, typeOf, creditState } from '../account-types.js?v=2610301540';
+import { Icon } from '../components.js?v=2610301540';
+import { speechSupported, listen } from '../speech.js?v=2610301540';
 
 const HISTORY_MONTHS = 13;  // текущий месяц и 12 предыдущих — хватит на «за год» в любом смысле
 const RECENT_DAYS = 60;     // операции целиком — только за последние дни
@@ -120,8 +120,7 @@ const SUGGESTIONS = [
 ];
 
 export const AssistantChat = {
-  components: { Icon, Modal },
-  emits: ['close'],
+  components: { Icon },
   setup() {
     const draft = ref('');
     const busy = ref(false);
@@ -173,11 +172,13 @@ export const AssistantChat = {
     const clear = () => { messages.splice(0); error.value = ''; };
     scrollDown();
 
-    return { messages, draft, busy, error, end, send, clear, listening, toggleMic, speechSupported, SUGGESTIONS };
+    return { state, messages, draft, busy, error, end, send, clear, listening, toggleMic, speechSupported, SUGGESTIONS };
   },
   template: `
-    <modal title="Помощник" class="chat-modal" @close="$emit('close')">
+    <section class="page chat-page">
+      <header class="page-head"><h1 class="page-title">Помощник</h1></header>
       <div class="chat" aria-live="polite">
+        <p v-if="state.offline" class="hint">Помощнику нужен интернет. Когда связь вернётся, можно будет задать вопрос.</p>
         <div v-if="!messages.length" class="stack">
           <p class="hint">Спросите что угодно о вашем бюджете: остатки, траты по категориям за год, какой картой платить.
             Отвечает GigaChat по сводке ваших данных.</p>
@@ -191,13 +192,14 @@ export const AssistantChat = {
         <button v-if="messages.length && !busy" type="button" class="btn ghost small chat-clear" @click="clear">Новый разговор</button>
         <div ref="end"></div>
       </div>
-      <template #footer>
-        <form class="chat-form" @submit.prevent="send()">
+      <!-- Поле вопроса всегда внизу экрана, над меню. -->
+      <form class="chat-form" @submit.prevent="send()">
+        <fieldset class="plain chat-fields" :disabled="!!state.offline">
           <button v-if="speechSupported" type="button" :class="['icon-btn', 'mic-btn', { listening }]"
             :aria-label="listening ? 'Остановить запись' : 'Спросить голосом'" @click="toggleMic">{{ listening ? '🔴' : '🎙️' }}</button>
           <input v-model="draft" maxlength="500" placeholder="Ваш вопрос" aria-label="Вопрос" :readonly="listening">
           <button class="btn primary" :disabled="busy || !draft.trim()" aria-label="Отправить"><icon name="arrow"/></button>
-        </form>
-      </template>
-    </modal>`,
+        </fieldset>
+      </form>
+    </section>`,
 };

@@ -1,7 +1,7 @@
 // Мини-карточки счетов: в цветах банка (определяется по названию счёта) или своя картинка.
-import { ref, computed, watch, onBeforeUnmount } from 'vue';
-import { Icon } from './components.js?v=2610301506';
-import { searchByName } from './utils.js?v=2610301506';
+import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue';
+import { Icon } from './components.js?v=2610301540';
+import { searchByName } from './utils.js?v=2610301540';
 
 // Названия банков, как их пишут в счетах и как их называет GigaChat на скриншотах.
 export const BANKS = {
@@ -63,24 +63,64 @@ export async function cardImageFromFile(file) {
   return canvas.toDataURL('image/jpeg', 0.82);
 }
 
+// Светлая ли карта — чтобы подпись на ней была контрастной. Яркость по формуле восприятия (0–255).
+const luma = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+const LIGHT_FROM = 160;
+
+function gradientIsLight(bg) {
+  const colors = bg.match(/#[0-9a-f]{6}/gi) ?? [];
+  const sum = colors.reduce((s, c) => s + luma(...[1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16))), 0);
+  return sum / colors.length > LIGHT_FROM;
+}
+
+// Свои картинки карт: яркость считаем один раз по уменьшенной копии.
+const imageLight = reactive(new Map());
+function measureImage(url) {
+  if (imageLight.has(url)) return;
+  imageLight.set(url, false);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 8; canvas.height = 5;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, 8, 5);
+    const d = ctx.getImageData(0, 0, 8, 5).data;
+    let sum = 0;
+    for (let i = 0; i < d.length; i += 4) sum += luma(d[i], d[i + 1], d[i + 2]);
+    imageLight.set(url, sum / (d.length / 4) > LIGHT_FROM);
+  };
+  img.src = url;
+}
+
 // <card-chip :account="a" size="sm|md|lg"/> — карточка для карт, значок для остальных счетов.
+// percent — подпись прямо на карте (кэшбэк), тёмная на светлой карте и светлая на тёмной.
 export const CardChip = {
-  props: { account: Object, size: { type: String, default: 'md' } },
+  props: { account: Object, size: { type: String, default: 'md' }, percent: String },
   setup(props) {
     const style = computed(() => CARD_STYLES[props.account?.card_style] ?? CARD_STYLES[defaultStyle(props.account ?? {})]);
     const card = computed(() => isCardType(props.account) || !!props.account?.card_image);
     const tile = computed(() => tileBg(props.account?.type));
-    return { style, card, tile };
+    const percentClass = computed(() => {
+      const image = props.account?.card_image;
+      if (image && props.percent) measureImage(image);
+      return (image ? imageLight.get(image) : gradientIsLight(style.value.bg)) ? 'on-light' : 'on-dark';
+    });
+    return { style, card, tile, percentClass };
   },
   template: `
     <span v-if="!card" :class="['acc-emoji', size]" :style="{ background: tile }" aria-hidden="true">{{ account?.icon }}</span>
     <span v-else-if="account.card_image" :class="['card-chip', size]" aria-hidden="true"
-      :style="{ backgroundImage: 'url(' + account.card_image + ')' }"></span>
+      :style="{ backgroundImage: 'url(' + account.card_image + ')' }">
+      <span v-if="percent" :class="['cc-percent', percentClass]">{{ percent }}</span>
+    </span>
     <span v-else :class="['card-chip', size]" :style="{ background: style.bg, color: style.fg }" aria-hidden="true">
       <span v-if="style.badge" class="cc-badge" :style="{ background: style.badge }">{{ style.brand }}</span>
       <span v-else class="cc-brand">{{ style.brand }}</span>
-      <span v-if="account.card_last4" class="cc-last4">•• {{ account.card_last4 }}</span>
-      <span class="cc-mir">МИР</span>
+      <span v-if="percent" :class="['cc-percent', percentClass]">{{ percent }}</span>
+      <template v-else>
+        <span v-if="account.card_last4" class="cc-last4">•• {{ account.card_last4 }}</span>
+        <span class="cc-mir">МИР</span>
+      </template>
     </span>`,
 };
 
