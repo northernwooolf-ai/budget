@@ -1,7 +1,7 @@
 // Мини-карточки счетов: в цветах банка (определяется по названию счёта) или своя картинка.
 import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue';
-import { Icon } from './components.js?v=2610301642';
-import { searchByName } from './utils.js?v=2610301642';
+import { Icon } from './components.js?v=2610301646';
+import { searchByName } from './utils.js?v=2610301646';
 
 // Названия банков, как их пишут в счетах и как их называет GigaChat на скриншотах.
 export const BANKS = {

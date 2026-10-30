@@ -1027,3 +1027,7 @@ html.modal-open { overflow: hidden; }
 }
 .title-switch:active { filter: brightness(.92); }
 .money-plate-check { margin-top: 4px; font-weight: 500; }
+
+/* Заголовок-переключатель и значки вида диаграммы — в одной строке. */
+.flow-head .title-switch { padding: 4px 10px; font-size: clamp(.82rem, 4.1vw, 1.05rem); white-space: nowrap; }
+.flow-head .segmented.mini button { display: grid; place-items: center; padding: 5px 9px; }

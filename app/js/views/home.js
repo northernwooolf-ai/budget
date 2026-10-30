@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301642';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301642';
-import { limitStatus } from '../categories.js?v=2610301642';
-import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301642';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301642';
-import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301642';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress } from '../components.js?v=2610301642';
-import { useLookups } from './operations.js?v=2610301642';
-import { CashbackCard } from './cashback.js?v=2610301642';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301642';
+import { api } from '../api.js?v=2610301646';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301646';
+import { limitStatus } from '../categories.js?v=2610301646';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301646';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301646';
+import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301646';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress } from '../components.js?v=2610301646';
+import { useLookups } from './operations.js?v=2610301646';
+import { CashbackCard } from './cashback.js?v=2610301646';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301646';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 

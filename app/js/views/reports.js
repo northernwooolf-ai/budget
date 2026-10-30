@@ -1,11 +1,11 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301642';
-import { state } from '../store.js?v=2610301642';
-import { expanded, toggleIn } from '../ui-state.js?v=2610301642';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301642';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301642';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301642';
-import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610301642';
+import { api } from '../api.js?v=2610301646';
+import { state } from '../store.js?v=2610301646';
+import { expanded, toggleIn } from '../ui-state.js?v=2610301646';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301646';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301646';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301646';
+import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610301646';
 
 // Выбранный вид запоминается на устройстве.
 function remembered(key, fallback) {
@@ -160,12 +160,12 @@ export const ReportsView = {
       </header>
 
       <div class="card pad">
-        <div class="card-head">
+        <div class="card-head nowrap-head flow-head">
           <h2><button type="button" class="title-switch" :title="flow.other" :aria-label="flow.title + '. ' + flow.other" @click="toggleFlow">
             {{ flow.title }} <icon name="swap" :size="16"/></button></h2>
           <div class="segmented mini" role="radiogroup" aria-label="Вид">
-            <button :class="{ active: spendView === 'ring' }" @click="spendView = 'ring'">Кольцо</button>
-            <button :class="{ active: spendView === 'bars' }" @click="spendView = 'bars'">Полосы</button>
+            <button :class="{ active: spendView === 'ring' }" role="radio" :aria-checked="spendView === 'ring'" title="Кольцевая диаграмма" aria-label="Кольцевая диаграмма" @click="spendView = 'ring'"><icon name="ring" :size="20"/></button>
+            <button :class="{ active: spendView === 'bars' }" role="radio" :aria-checked="spendView === 'bars'" title="Столбчатая диаграмма" aria-label="Столбчатая диаграмма" @click="spendView = 'bars'"><icon name="bars" :size="20"/></button>
           </div>
         </div>
         <p v-if="!spending.rows.length" class="empty">{{ flow.empty }}</p>
