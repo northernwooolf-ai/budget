@@ -1,7 +1,7 @@
 // Дерево категорий: разделы («1 — Еда») с категориями («1.1. Еда домой»)
 // и категории без раздела. Номера ставятся по порядку и пересчитываются сами.
-import { state } from './store.js?v=2610301605';
-import { bySort } from './utils.js?v=2610301605';
+import { state } from './store.js?v=2610301632';
+import { bySort } from './utils.js?v=2610301632';
 
 export function categoryTree(kind) {
   const groups = state.categoryGroups.filter((g) => g.kind === kind).sort(bySort);
@@ -21,11 +21,11 @@ export function categoryTree(kind) {
 export const groupLabel = (tree, g) => `${tree.nums[g.id]} — ${g.name}`;
 export const categoryLabel = (tree, c) => (tree.nums[c.id] ? `${tree.nums[c.id]}. ${c.name}` : c.name);
 
-// Траты за месяц по категориям и по разделам (архивные категории тоже считаются).
-export function spendingMaps(transactions) {
+// Траты (или доходы) за месяц по категориям и по разделам (архивные категории тоже считаются).
+export function spendingMaps(transactions, kind = 'expense') {
   const byCategory = new Map();
   for (const t of transactions) {
-    if (t.kind === 'expense') byCategory.set(t.category_id, (byCategory.get(t.category_id) ?? 0) + Number(t.amount));
+    if (t.kind === kind) byCategory.set(t.category_id, (byCategory.get(t.category_id) ?? 0) + Number(t.amount));
   }
   const byGroup = new Map();
   for (const c of state.categories) {

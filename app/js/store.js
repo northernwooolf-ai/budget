@@ -1,7 +1,7 @@
 // Состояние приложения и действия над ним. Экраны читают state и вызывают эти функции.
 import { reactive } from 'vue';
-import { api, isDemo } from './api.js?v=2610301605';
-import { monthStart, addMonths, isoDate } from './utils.js?v=2610301605';
+import { api, isDemo } from './api.js?v=2610301632';
+import { monthStart, addMonths, isoDate } from './utils.js?v=2610301632';
 
 export const state = reactive({
   isDemo,

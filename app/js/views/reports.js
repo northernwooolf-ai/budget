@@ -1,11 +1,11 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301605';
-import { state } from '../store.js?v=2610301605';
-import { expanded, toggleIn } from '../ui-state.js?v=2610301605';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301605';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301605';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301605';
-import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610301605';
+import { api } from '../api.js?v=2610301632';
+import { state } from '../store.js?v=2610301632';
+import { expanded, toggleIn } from '../ui-state.js?v=2610301632';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301632';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301632';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301632';
+import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610301632';
 
 // Выбранный вид запоминается на устройстве.
 function remembered(key, fallback) {
@@ -26,31 +26,44 @@ export const ReportsView = {
     const months = remembered('report-months', '6');
     const subject = ref('flow');           // 'flow' — доходы и расходы, иначе id раздела расходов
     const drill = ref(null);               // раздел, открытый внутри кольца
+    const flowKind = remembered('report-flow-kind', 'expense'); // расходы или доходы в верхнем отчёте
+    const FLOW_TEXT = {
+      expense: { title: 'Расходы за месяц', all: 'Все расходы', empty: 'Расходов в этом месяце нет', none: 'Трат нет.', other: 'Показать доходы', sign: '−' },
+      income: { title: 'Доходы за месяц', all: 'Все доходы', empty: 'Доходов в этом месяце нет', none: 'Доходов нет.', other: 'Показать расходы', sign: '+' },
+    };
+    const flow = computed(() => FLOW_TEXT[flowKind.value]);
+    const toggleFlow = () => { flowKind.value = flowKind.value === 'expense' ? 'income' : 'expense'; };
 
-    const tree = computed(() => categoryTree('expense'));
+    const tree = computed(() => categoryTree(flowKind.value));
+    const flowGroups = computed(() => state.categoryGroups.filter((g) => g.kind === flowKind.value).sort(bySort));
+    // Динамика ниже всегда показывает разделы расходов.
+    const expenseTree = computed(() => categoryTree('expense'));
     const expenseGroups = computed(() => state.categoryGroups.filter((g) => g.kind === 'expense').sort(bySort));
     // Цвет раздела закреплён за его местом в списке, а не за размером суммы.
     const groupColor = (g) => SLICE_COLORS[expenseGroups.value.indexOf(g)] ?? OTHER_COLOR;
 
-    // Расходы месяца по разделам (с раскрытием до категорий) и категориям без раздела.
+    // Операции месяца по разделам (с раскрытием до категорий) и категориям без раздела.
     const spending = computed(() => {
-      const { byCategory, byGroup } = spendingMaps(state.transactions);
+      const { byCategory, byGroup } = spendingMaps(state.transactions, flowKind.value);
       const total = [...byCategory.values()].reduce((a, b) => a + b, 0);
       const rows = [];
-      for (const g of expenseGroups.value) {
+      flowGroups.value.forEach((g, place) => {
         const sum = byGroup.get(g.id) ?? 0;
-        if (!sum) continue;
+        if (!sum) return;
         const children = state.categories.filter((c) => c.group_id === g.id && byCategory.has(c.id)).sort(bySort)
           .map((c, i) => ({ id: c.id, icon: c.icon, label: categoryLabel(tree.value, c), value: byCategory.get(c.id), color: SLICE_COLORS[i] ?? OTHER_COLOR }))
           .sort((a, b) => b.value - a.value);
-        rows.push({ id: g.id, icon: '📂', label: groupLabel(tree.value, g), value: sum, color: groupColor(g), children });
-      }
+        rows.push({ id: g.id, icon: '📂', label: groupLabel(tree.value, g), value: sum, color: SLICE_COLORS[place] ?? OTHER_COLOR, children });
+      });
+      // Категории без раздела (доходы обычно только такие) красим следующими цветами, чтобы их можно было различить.
       const groupIds = new Set(state.categoryGroups.map((g) => g.id));
-      for (const [id, sum] of byCategory) {
-        const c = state.categories.find((x) => x.id === id);
-        if (c && groupIds.has(c.group_id)) continue;
-        rows.push({ id: id ?? 'none', icon: c?.icon ?? '❔', label: c?.name ?? 'Без категории', value: sum, color: OTHER_COLOR });
-      }
+      const loose = [...byCategory.entries()]
+        .map(([id, sum]) => ({ id, sum, c: state.categories.find((x) => x.id === id) }))
+        .filter((x) => !(x.c && groupIds.has(x.c.group_id)))
+        .sort((a, b) => (a.c && b.c ? bySort(a.c, b.c) : a.c ? -1 : 1));
+      loose.forEach(({ id, sum, c }, i) => {
+        rows.push({ id: id ?? 'none', icon: c?.icon ?? '❔', label: c?.name ?? 'Без категории', value: sum, color: SLICE_COLORS[flowGroups.value.length + i] ?? OTHER_COLOR });
+      });
       rows.sort((a, b) => b.value - a.value);
       const top = rows[0]?.value || 1;
       return { rows, total, width: (v) => (v / top) * 100, share: (v) => (total ? Math.round((v / total) * 100) : 0) };
@@ -60,7 +73,7 @@ export const ReportsView = {
     const ring = computed(() => {
       const d = drill.value && spending.value.rows.find((r) => r.id === drill.value);
       if (d) return { items: d.children, total: d.value, label: d.label };
-      return { items: spending.value.rows, total: spending.value.total, label: 'Все расходы' };
+      return { items: spending.value.rows, total: spending.value.total, label: flow.value.all };
     });
     // Выбранная категория: под графиком — список её трат за месяц. Повторное нажатие снимает выбор.
     const picked = ref(null);
@@ -69,7 +82,7 @@ export const ReportsView = {
       picked.value = picked.value?.id === item.id ? null : item;
     }
     watch(drill, () => { picked.value = null; });
-    watch(() => state.month, () => { drill.value = null; picked.value = null; });
+    watch([() => state.month, flowKind], () => { drill.value = null; picked.value = null; });
 
     // Траты выбранной категории, а если категория не выбрана, но открыт раздел — всего раздела.
     const pickedList = computed(() => {
@@ -78,7 +91,7 @@ export const ReportsView = {
       if (!target) return null;
       const ids = target.children ? new Set(target.children.map((c) => c.id)) : new Set([target.id === 'none' ? null : target.id]);
       const items = state.transactions
-        .filter((t) => t.kind === 'expense' && ids.has(t.category_id ?? null))
+        .filter((t) => t.kind === flowKind.value && ids.has(t.category_id ?? null))
         .sort((a, b) => b.date.localeCompare(a.date) || Number(b.amount) - Number(a.amount));
       return { title: target.label, icon: target.icon, items, total: items.reduce((s, t) => s + Number(t.amount), 0) };
     });
@@ -133,7 +146,7 @@ export const ReportsView = {
 
     return {
       state, open, toggle, spendView, trendMode, months, subject, drill, spending, ring, selectSlice, limits,
-      history, historyError, trendSeries, expenseGroups, tree, groupLabel, Math,
+      history, historyError, trendSeries, expenseGroups, expenseTree, groupLabel, Math, flowKind, flow, toggleFlow,
       picked, pickedList, catById, accName, shortDate,
       money: rub, // в отчётах — итоги, показываем без копеек
       exact: money, // а суммы отдельных трат — как есть
@@ -148,16 +161,17 @@ export const ReportsView = {
 
       <div class="card pad">
         <div class="card-head">
-          <h2>Расходы за месяц</h2>
+          <h2><button type="button" class="title-switch" :title="flow.other" :aria-label="flow.title + '. ' + flow.other" @click="toggleFlow">
+            {{ flow.title }} <icon name="swap" :size="16"/></button></h2>
           <div class="segmented mini" role="radiogroup" aria-label="Вид">
             <button :class="{ active: spendView === 'ring' }" @click="spendView = 'ring'">Кольцо</button>
             <button :class="{ active: spendView === 'bars' }" @click="spendView = 'bars'">Полосы</button>
           </div>
         </div>
-        <p v-if="!spending.rows.length" class="empty">Расходов в этом месяце нет</p>
+        <p v-if="!spending.rows.length" class="empty">{{ flow.empty }}</p>
 
         <div v-else-if="spendView === 'ring'" class="ring-layout">
-          <ring-chart :items="ring.items" :total="ring.total" :center-label="drill ? ring.label : 'Все расходы'" @select="selectSlice"/>
+          <ring-chart :items="ring.items" :total="ring.total" :center-label="ring.label" @select="selectSlice"/>
           <div class="ring-legend">
             <button v-if="drill" class="btn ghost small" @click="drill = null"><icon name="left" :size="16"/> Все разделы</button>
             <button v-for="it in ring.items" :key="it.id" :class="['legend-row', { on: picked?.id === it.id }]"
@@ -203,14 +217,14 @@ export const ReportsView = {
             <span class="muted">{{ pickedList.items.length }} · {{ money(pickedList.total) }}</span>
             <button v-if="picked" type="button" class="chip-x" aria-label="Закрыть список" @click="picked = null">×</button>
           </div>
-          <p v-if="!pickedList.items.length" class="hint">Трат нет.</p>
+          <p v-if="!pickedList.items.length" class="hint">{{ flow.none }}</p>
           <button v-for="t in pickedList.items" :key="t.id" type="button" class="tx-row" v-long-press="() => $emit('copy', t)" @click="$emit('edit', t)">
             <span class="tx-icon" aria-hidden="true">{{ catById[t.category_id]?.icon ?? '❔' }}</span>
             <span class="tx-main">
               <span class="tx-title">{{ t.note || catById[t.category_id]?.name || 'Без категории' }}</span>
               <span class="tx-sub">{{ shortDate(t.date) }} · {{ accName(t.account_id) }}</span>
             </span>
-            <span class="tx-amount expense">−{{ exact(t.amount) }}</span>
+            <span :class="['tx-amount', flowKind]">{{ flow.sign }}{{ exact(t.amount) }}</span>
           </button>
         </div>
       </div>
@@ -246,7 +260,7 @@ export const ReportsView = {
           <select v-model="subject" aria-label="Что показать">
             <option value="flow">Доходы и расходы</option>
             <optgroup label="Расходы по разделу">
-              <option v-for="g in expenseGroups" :key="g.id" :value="g.id">{{ groupLabel(tree, g) }}</option>
+              <option v-for="g in expenseGroups" :key="g.id" :value="g.id">{{ groupLabel(expenseTree, g) }}</option>
             </optgroup>
           </select>
           <div class="segmented mini" role="radiogroup" aria-label="Период">

@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301605';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301605';
-import { limitStatus } from '../categories.js?v=2610301605';
-import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301605';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301605';
-import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301605';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress } from '../components.js?v=2610301605';
-import { useLookups } from './operations.js?v=2610301605';
-import { CashbackCard } from './cashback.js?v=2610301605';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301605';
+import { api } from '../api.js?v=2610301632';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610301632';
+import { limitStatus } from '../categories.js?v=2610301632';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610301632';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610301632';
+import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610301632';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress } from '../components.js?v=2610301632';
+import { useLookups } from './operations.js?v=2610301632';
+import { CashbackCard } from './cashback.js?v=2610301632';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610301632';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -456,11 +456,9 @@ export const HomeView = {
           <icon name="down" :class="['chev', { closed: !details }]" :size="16"/>
         </button>
         <div v-if="details" class="kv-list">
-          <div class="kv"><span>Доступные деньги</span>
-            <b :class="{ negative: totals.available < 0 }">{{ rub(totals.available) }}</b></div>
           <div class="kv"><span>Вклады и инвестиции</span>
             <b :class="{ negative: totals.savings < 0 }">{{ rub(totals.savings) }}</b></div>
-          <div v-if="totals.liquid" class="kv"><span>из них ликвидные</span><b>{{ rub(totals.liquid) }}</b></div>
+          <div v-if="totals.liquid" class="kv kv-sub"><span>из них ликвидные</span><b>{{ rub(totals.liquid) }}</b></div>
           <div class="kv"><span>Нам должны</span><b>{{ rub(totals.owedToUs) }}</b></div>
           <div class="kv"><span>Мы должны и кредиты</span>
             <b :class="{ negative: totals.weOwe > 0 }">{{ totals.weOwe > 0 ? '−' : '' }}{{ rub(totals.weOwe) }}</b></div>

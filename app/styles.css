@@ -867,7 +867,7 @@ button.plate { -webkit-appearance: none; appearance: none; }
   position: sticky; top: 0; z-index: 5; display: flex; flex-direction: column; gap: 10px;
   padding: calc(env(safe-area-inset-top, 0px) + 6px) 0 8px; margin-top: -6px; background: var(--bg);
 }
-.simple-top .cb-best { max-height: 38vh; overflow: hidden auto; }
+.simple-top .cb-best { max-height: max(19vh, 120px); overflow: hidden auto; overscroll-behavior: contain; }
 .shell.simple .main { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { .shell.simple .main { margin: 0 auto; } }
 
@@ -1008,3 +1008,21 @@ html.modal-open { overflow: hidden; }
 
 .import-clear { align-self: flex-start; font-size: .85rem; }
 .statement-head .grow { min-width: 0; }
+
+/* Сводка в «Операциях»: подпись и сумма по центру. */
+.summary .stat { text-align: center; }
+
+/* Главная сумма зелёная; если ушли в минус, она красная. */
+.money-plate-label, .money-plate b { color: var(--income); }
+
+/* Подчинённая строка в «Подробнее»: сдвинута вправо, с уголком и мельче. */
+.kv.kv-sub { padding-left: 14px; font-size: .88rem; }
+.kv-sub span::before { content: '└ '; color: var(--muted); }
+
+/* Заголовок-переключатель в отчётах: плашка акцентного цвета показывает, что на неё можно нажать. */
+.title-switch {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 12px;
+  border: 0; border-radius: 10px; background: var(--primary); color: var(--primary-ink);
+  font: inherit; font-weight: 700; text-align: left;
+}
+.title-switch:active { filter: brightness(.92); }

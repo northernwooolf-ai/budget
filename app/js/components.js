@@ -1,8 +1,8 @@
 // Мелкие общие элементы интерфейса.
 import { ref, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import Sortable from 'sortablejs';
-import { state, shiftMonth } from './store.js?v=2610301605';
-import { monthLabel } from './utils.js?v=2610301605';
+import { state, shiftMonth } from './store.js?v=2610301632';
+import { monthLabel } from './utils.js?v=2610301632';
 
 const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -10,6 +10,7 @@ const ICONS = {
   mic: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M8 21h8',
   coin: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10 17V7h3a3 3 0 0 1 0 6H8M8 15.5h5',
   chat: 'M21 12a8 8 0 0 1-8 8H4l2.5-3A8 8 0 1 1 21 12z',
+  swap: 'M7 20V5M7 5L3 9M7 5l4 4M17 4v15M17 19l4-4M17 19l-4-4',
   wallet: 'M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14.5h.01',
   chart: 'M3 3v18h18M7 16v-4M12 16V8M17 16v-7',
   settings: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
