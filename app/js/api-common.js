@@ -2,7 +2,7 @@
 
 export const ACCOUNT_FIELDS = ['name', 'icon', 'type', 'initial_balance', 'credit_limit', 'archived', 'sort',
   'card_style', 'card_last4', 'card_image', 'liquid'];
-export const CATEGORY_FIELDS = ['name', 'kind', 'group_id', 'icon', 'monthly_limit', 'archived', 'sort'];
+export const CATEGORY_FIELDS = ['name', 'kind', 'group_id', 'icon', 'monthly_limit', 'limit_from', 'limit_until', 'archived', 'sort'];
 export const GROUP_FIELDS = ['name', 'kind', 'monthly_limit', 'sort'];
 export const CASHBACK_FIELDS = ['month', 'account_id', 'label', 'percent', 'category_ids'];
 export const TX_FIELDS = ['kind', 'amount', 'account_id', 'to_account_id', 'category_id', 'date', 'note', 'spent_by'];
@@ -24,6 +24,7 @@ export function friendlyError(err) {
   }
   const msg = err?.message || String(err);
   if (/'liquid' column/i.test(msg)) return new Error('Чтобы отмечать ликвидные вклады, запустите в Supabase файл update-4-liquid.sql');
+  if (/'limit_(from|until)' column/i.test(msg)) return new Error('Чтобы задавать срок лимитов, запустите в Supabase файл update-5-limit-period.sql');
   for (const [re, text] of MESSAGES) if (re.test(msg)) return new Error(text);
   return new Error(msg);
 }

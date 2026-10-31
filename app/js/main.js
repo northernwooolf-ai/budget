@@ -1,18 +1,18 @@
 import { createApp, ref, onMounted, onBeforeUnmount } from 'vue';
-import { state, init } from './store.js?v=2610311858';
-import { localGet, localSet } from './utils.js?v=2610311858';
-import { Icon } from './components.js?v=2610311858';
-import { appearance } from './appearance.js?v=2610311858';
-import { lock } from './lock.js?v=2610311858';
-import { LockScreen } from './views/lock-screen.js?v=2610311858';
-import { AuthView, OnboardingView } from './views/auth.js?v=2610311858';
-import { OperationsView, TxEditor, copyOfTx } from './views/operations.js?v=2610311858';
-import { HomeView } from './views/home.js?v=2610311858';
-import { ReportsView } from './views/reports.js?v=2610311858';
-import { SettingsView } from './views/settings.js?v=2610311858';
-import { ImportView } from './views/import.js?v=2610311858';
-import { AssistantChat } from './views/assistant.js?v=2610311858';
-import { simpleView } from './ui-state.js?v=2610311858';
+import { state, init } from './store.js?v=2610312014';
+import { localGet, localSet } from './utils.js?v=2610312014';
+import { Icon } from './components.js?v=2610312014';
+import { appearance } from './appearance.js?v=2610312014';
+import { lock } from './lock.js?v=2610312014';
+import { LockScreen } from './views/lock-screen.js?v=2610312014';
+import { AuthView, OnboardingView } from './views/auth.js?v=2610312014';
+import { OperationsView, TxEditor, copyOfTx } from './views/operations.js?v=2610312014';
+import { HomeView } from './views/home.js?v=2610312014';
+import { ReportsView } from './views/reports.js?v=2610312014';
+import { SettingsView } from './views/settings.js?v=2610312014';
+import { ImportView } from './views/import.js?v=2610312014';
+import { AssistantChat } from './views/assistant.js?v=2610312014';
+import { simpleView } from './ui-state.js?v=2610312014';
 
 const TABS = [
   { id: 'home', label: 'Главная', icon: 'home' },

@@ -3,8 +3,8 @@
 import {
   friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS,
   DEFAULT_ACCOUNTS, DEFAULT_CATEGORY_GROUPS, DEFAULT_LOOSE_CATEGORIES,
-} from './api-common.js?v=2610311858';
-import { pick, isoDate, localGet, localSet } from './utils.js?v=2610311858';
+} from './api-common.js?v=2610312014';
+import { pick, isoDate, localGet, localSet } from './utils.js?v=2610312014';
 
 const KEY = 'budget-demo-db-v3';
 const PARTNER_ID = 'demo-partner';
@@ -146,14 +146,20 @@ function seedSample(hh) {
 
   // Кэшбэки на текущий месяц.
   const month = isoDate(new Date(base.getFullYear(), base.getMonth(), 1));
-  const cb = (account, label, percent, categories) => (db.cashbacks ??= []).push({
-    id: uid(), household_id: hh, month, account_id: account.id, label, percent,
+  const cb = (account, label, percent, categories, at = month) => (db.cashbacks ??= []).push({
+    id: uid(), household_id: hh, month: at, account_id: account.id, label, percent,
     category_ids: categories.map((n) => cat(n).id), created_at: now(),
   });
   cb(card, 'Супермаркеты', 5, ['Еда домой']);
   cb(card, 'АЗС', 3, ['Автомобиль']);
   cb(credit, 'Рестораны', 7, ['Кафе и рестораны']);
   cb(credit, 'Все покупки', 1.5, []);
+  // И на прошлые месяцы, для истории кэшбэков.
+  const monthAgo = (n) => isoDate(new Date(base.getFullYear(), base.getMonth() - n, 1));
+  cb(card, 'Аптеки', 5, ['Аптека и врачи'], monthAgo(1));
+  cb(card, 'Супермаркеты', 3, ['Еда домой'], monthAgo(1));
+  cb(credit, 'Супермаркеты', 4, ['Еда домой'], monthAgo(1));
+  cb(credit, 'Такси', 10, ['Такси'], monthAgo(2));
 }
 
 function balanceOf(account, txs) {
@@ -343,6 +349,10 @@ export default {
   async listCashbacks(month) {
     return structuredClone(mine(db.cashbacks ??= []).filter((c) => c.month === month)
       .sort((a, b) => b.percent - a.percent));
+  },
+  async listCashbackHistory() {
+    await delay();
+    return structuredClone(mine(db.cashbacks ??= []).sort((a, b) => b.month.localeCompare(a.month) || b.percent - a.percent));
   },
   async saveCashback(c) { await delay(); db.cashbacks ??= []; return upsert('cashbacks', CASHBACK_FIELDS, c); },
   async deleteCashback(id) {

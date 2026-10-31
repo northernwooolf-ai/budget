@@ -1,7 +1,7 @@
 // Дерево категорий: разделы («1 — Еда») с категориями («1.1. Еда домой»)
 // и категории без раздела. Номера ставятся по порядку и пересчитываются сами.
-import { state } from './store.js?v=2610311858';
-import { bySort } from './utils.js?v=2610311858';
+import { state } from './store.js?v=2610312014';
+import { bySort, isoDate, addMonths, today } from './utils.js?v=2610312014';
 
 export function categoryTree(kind) {
   const groups = state.categoryGroups.filter((g) => g.kind === kind).sort(bySort);
@@ -34,20 +34,43 @@ export function spendingMaps(transactions, kind = 'expense') {
   return { byCategory, byGroup };
 }
 
-// Лимиты разделов и категорий с долей потраченного, сначала самые «горящие».
-export function limitStatus(transactions) {
+const levelOf = (ratio) => (ratio > 1 ? 'over' : ratio >= 0.8 ? 'warn' : 'ok');
+
+// Лимиты в порядке категорий: разделы со своими категориями и категории без раздела.
+// Лимит раздела считается за выбранный месяц. Лимит категории со сроком — за свой срок,
+// без срока — тоже за месяц. Лимит, срок которого начнётся позже выбранного месяца, не показывается.
+export function limitTree(transactions = state.transactions, periodTx = state.limitTx) {
   const { byCategory, byGroup } = spendingMaps(transactions);
   const tree = categoryTree('expense');
-  const row = (item, spent, label, isGroup) => {
+  const monthEnd = isoDate(addMonths(state.month, 1)), now = today();
+  const make = (item, spent, label, isGroup) => {
     const limit = Number(item.monthly_limit), ratio = spent / limit;
     return {
       id: item.id, icon: isGroup ? '📂' : item.icon, label, isGroup, spent, limit, ratio, left: limit - spent,
-      level: ratio > 1 ? 'over' : ratio >= 0.8 ? 'warn' : 'ok',
+      level: levelOf(ratio), until: isGroup ? null : item.limit_until ?? null, expired: !isGroup && !!item.limit_until && item.limit_until < now,
     };
   };
-  const groups = tree.sections.filter((s) => s.group.monthly_limit)
-    .map((s) => row(s.group, byGroup.get(s.group.id) ?? 0, groupLabel(tree, s.group), true));
-  const cats = state.categories.filter((c) => c.kind === 'expense' && !c.archived && c.monthly_limit)
-    .map((c) => row(c, byCategory.get(c.id) ?? 0, categoryLabel(tree, c), false));
-  return [...groups, ...cats].sort((a, b) => b.ratio - a.ratio);
+  const catRow = (c) => {
+    if (!c.monthly_limit || (c.limit_from && c.limit_from >= monthEnd)) return null;
+    const spent = c.limit_until
+      ? periodTx.filter((t) => t.category_id === c.id && t.date >= c.limit_from && t.date <= c.limit_until).reduce((s, t) => s + Number(t.amount), 0)
+      : byCategory.get(c.id) ?? 0;
+    return make(c, spent, categoryLabel(tree, c), false);
+  };
+  const sections = tree.sections.map((s) => {
+    const items = s.items.map(catRow).filter(Boolean);
+    const own = s.group.monthly_limit ? make(s.group, byGroup.get(s.group.id) ?? 0, groupLabel(tree, s.group), true) : null;
+    if (!own && !items.length) return null;
+    // У раздела без своего лимита в заголовке — сумма по его категориям.
+    const spent = own ? own.spent : items.reduce((a, r) => a + r.spent, 0);
+    const limit = own ? own.limit : items.reduce((a, r) => a + r.limit, 0);
+    return { id: s.group.id, label: groupLabel(tree, s.group), own, items, spent, limit, ratio: spent / limit, left: limit - spent, level: own ? own.level : levelOf(spent / limit) };
+  }).filter(Boolean);
+  return { sections, loose: tree.loose.map(catRow).filter(Boolean) };
+}
+
+// Те же лимиты одним списком, сначала самые «горящие».
+export function limitStatus(transactions) {
+  const { sections, loose } = limitTree(transactions);
+  return [...sections.flatMap((s) => (s.own ? [s.own, ...s.items] : s.items)), ...loose].sort((a, b) => b.ratio - a.ratio);
 }

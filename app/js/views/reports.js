@@ -1,12 +1,36 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610311858';
-import { state, isAdmin } from '../store.js?v=2610311858';
-import { LimitAdvisor, hasAdvice } from './limit-advisor.js?v=2610311858';
-import { expanded, toggleIn } from '../ui-state.js?v=2610311858';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610311858';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610311858';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610311858';
-import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610311858';
+import { api } from '../api.js?v=2610312014';
+import { state, isAdmin } from '../store.js?v=2610312014';
+import { LimitAdvisor, hasAdvice } from './limit-advisor.js?v=2610312014';
+import { expanded, toggleIn } from '../ui-state.js?v=2610312014';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610312014';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitTree } from '../categories.js?v=2610312014';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610312014';
+import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610312014';
+import { CashbackHistory } from './cashback.js?v=2610312014';
+
+const limitDate = (iso) => parseIso(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
+
+// Сколько потрачено из лимита: подпись, полоса и остаток. Заголовок приходит через слот.
+const LimitBar = {
+  props: { item: Object },
+  setup: () => ({ money: rub, limitDate }),
+  template: `
+    <div class="limit-top">
+      <span class="limit-name"><slot/></span>
+      <span class="limit-sum">{{ money(item.spent) }} <span class="muted">из {{ money(item.limit) }}</span></span>
+    </div>
+    <div class="progress"><div :class="['progress-fill', item.level]" :style="{ width: Math.min(100, item.ratio * 100) + '%' }"></div></div>
+    <small :class="['limit-note', item.expired ? '' : item.level]">
+      <template v-if="item.expired">Срок закончился {{ limitDate(item.until) }}<template v-if="item.left < 0">, превышение {{ money(-item.left) }}</template><template v-else>, осталось {{ money(item.left) }}</template></template>
+      <template v-else>
+        <template v-if="item.level === 'over'">⚠ Превышен на {{ money(-item.left) }}</template>
+        <template v-else-if="item.level === 'warn'">● Осталось {{ money(item.left) }}, лимит почти исчерпан</template>
+        <template v-else>✓ Осталось {{ money(item.left) }}</template>
+        <template v-if="item.until"> · до {{ limitDate(item.until) }}</template>
+      </template>
+    </small>`,
+};
 
 // Выбранный вид запоминается на устройстве.
 function remembered(key, fallback) {
@@ -16,7 +40,7 @@ function remembered(key, fallback) {
 }
 
 export const ReportsView = {
-  components: { Icon, MonthSwitcher, RingChart, TrendChart, LimitAdvisor },
+  components: { Icon, MonthSwitcher, RingChart, TrendChart, LimitAdvisor, LimitBar, CashbackHistory },
   directives: { longPress: vLongPress },
   emits: ['edit', 'copy'],
   setup() {
@@ -104,7 +128,10 @@ export const ReportsView = {
       if (drill.value && !rows.some((r) => r.id === drill.value)) drill.value = null;
     });
 
-    const limits = computed(() => limitStatus(state.transactions));
+    const limits = computed(() => limitTree());
+    const limitsEmpty = computed(() => !limits.value.sections.length && !limits.value.loose.length);
+    const openLimits = expanded.limitSections;
+    const toggleLimit = (id) => toggleIn(openLimits, id);
     const advising = ref(hasAdvice()); // открыт расчёт лимитов; неутверждённое предложение сохраняется между запусками
     const admin = computed(isAdmin);
 
@@ -148,7 +175,7 @@ export const ReportsView = {
     });
 
     return {
-      state, advising, admin, open, toggle, spendView, trendMode, months, subject, drill, spending, ring, selectSlice, limits,
+      state, advising, admin, open, toggle, spendView, trendMode, months, subject, drill, spending, ring, selectSlice, limits, limitsEmpty, openLimits, toggleLimit,
       history, historyError, trendSeries, expenseGroups, expenseTree, groupLabel, Math, flowKind, flow, toggleFlow,
       picked, pickedList, catById, accName, shortDate,
       money: rub, // в отчётах — итоги, показываем без копеек
@@ -234,25 +261,29 @@ export const ReportsView = {
 
       <div class="card pad">
         <div class="card-head limits-head">
-          <h2>Лимиты на месяц</h2>
+          <h2>Лимиты</h2>
           <button v-if="admin && !state.offline && !advising" type="button" class="btn small" @click="advising = true">Рассчитать</button>
         </div>
         <limit-advisor v-if="advising" @close="advising = false"/>
-        <p v-if="!limits.length && !advising" class="empty">Лимиты не заданы. Их можно указать для разделов и категорий в «Настройки → Категории».</p>
-        <ul class="limits">
-          <li v-for="l in limits" :key="l.id">
-            <div class="limit-top">
-              <span :class="{ 'limit-group': l.isGroup }"><span aria-hidden="true">{{ l.icon }}</span> {{ l.label }}</span>
-              <span>{{ money(l.spent) }} <span class="muted">из {{ money(l.limit) }}</span></span>
-            </div>
-            <div class="progress"><div :class="['progress-fill', l.level]" :style="{ width: Math.min(100, l.ratio * 100) + '%' }"></div></div>
-            <small :class="['limit-note', l.level]">
-              <template v-if="l.level === 'over'">⚠ Превышен на {{ money(-l.left) }}</template>
-              <template v-else-if="l.level === 'warn'">● Осталось {{ money(l.left) }}, лимит почти исчерпан</template>
-              <template v-else>✓ Осталось {{ money(l.left) }}</template>
-            </small>
-          </li>
-        </ul>
+        <p v-if="limitsEmpty && !advising" class="empty">Лимиты не заданы. Их можно рассчитать или указать для разделов и категорий в «Настройки → Категории».</p>
+        <div class="limit-sections">
+          <div v-for="s in limits.sections" :key="s.id" class="limit-section">
+            <button v-if="s.items.length" type="button" class="limit-head" :aria-expanded="openLimits.has(s.id)" @click="toggleLimit(s.id)">
+              <limit-bar :item="s"><icon name="down" :class="['chev', { closed: !openLimits.has(s.id) }]" :size="18"/>
+                <span class="limit-group">{{ s.label }}</span> <span class="group-count">{{ s.items.length }}</span></limit-bar>
+            </button>
+            <div v-else class="limit-head"><limit-bar :item="s"><span class="limit-group">{{ s.label }}</span></limit-bar></div>
+            <ul v-if="s.items.length && openLimits.has(s.id)" class="limits limit-children">
+              <li v-for="l in s.items" :key="l.id"><limit-bar :item="l"><span aria-hidden="true">{{ l.icon }}</span> {{ l.label }}</limit-bar></li>
+            </ul>
+          </div>
+          <div v-if="limits.loose.length" class="limit-section">
+            <div v-if="limits.sections.length" class="section-title muted">Без раздела</div>
+            <ul class="limits">
+              <li v-for="l in limits.loose" :key="l.id"><limit-bar :item="l"><span aria-hidden="true">{{ l.icon }}</span> {{ l.label }}</limit-bar></li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       <div class="card pad">
@@ -297,5 +328,7 @@ export const ReportsView = {
           </table>
         </div>
       </div>
+
+      <cashback-history/>
     </section>`,
 };

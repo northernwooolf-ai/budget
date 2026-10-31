@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610311858';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610311858';
-import { limitStatus } from '../categories.js?v=2610311858';
-import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610311858';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610311858';
-import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610311858';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress } from '../components.js?v=2610311858';
-import { useLookups } from './operations.js?v=2610311858';
-import { CashbackCard } from './cashback.js?v=2610311858';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610311858';
+import { api } from '../api.js?v=2610312014';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610312014';
+import { limitStatus } from '../categories.js?v=2610312014';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610312014';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610312014';
+import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610312014';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress } from '../components.js?v=2610312014';
+import { useLookups } from './operations.js?v=2610312014';
+import { CashbackCard } from './cashback.js?v=2610312014';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610312014';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -395,7 +395,7 @@ export const HomeView = {
     });
 
     // Разделы и категории, где потрачено 80% лимита и больше.
-    const alerts = computed(() => limitStatus(state.transactions).filter((l) => l.ratio >= 0.8));
+    const alerts = computed(() => limitStatus(state.transactions).filter((l) => l.ratio >= 0.8 && !l.expired));
 
     function editAccount(a) {
       viewing.value = null;

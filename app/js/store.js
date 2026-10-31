@@ -1,7 +1,7 @@
 // Состояние приложения и действия над ним. Экраны читают state и вызывают эти функции.
 import { reactive } from 'vue';
-import { api, isDemo } from './api.js?v=2610311858';
-import { monthStart, addMonths, isoDate } from './utils.js?v=2610311858';
+import { api, isDemo } from './api.js?v=2610312014';
+import { monthStart, addMonths, isoDate, parseIso } from './utils.js?v=2610312014';
 
 export const state = reactive({
   isDemo,
@@ -17,6 +17,7 @@ export const state = reactive({
   balances: {},      // account_id → остаток
   month: monthStart(new Date()),
   transactions: [],  // операции выбранного месяца
+  limitTx: [],       // траты за сроки лимитов: срок может выходить за выбранный месяц
   txLoading: false,
   dataVersion: 0,    // растёт при каждом обновлении данных — чтобы отчёты пересчитывались
   offline: null,     // { savedAt } — нет интернета, показан последний сохранённый снимок
@@ -45,7 +46,7 @@ function saveSnapshot() {
       user: { id: userId, email: state.session.user.email },
       me: state.me, household: state.household, members: state.members, accounts: state.accounts,
       categoryGroups: state.categoryGroups, categories: state.categories, cashbacks: state.cashbacks,
-      balances: state.balances, months: Object.fromEntries(keep.map((k) => [k, months[k]])),
+      balances: state.balances, limitTx: state.limitTx, months: Object.fromEntries(keep.map((k) => [k, months[k]])),
     }));
   } catch { /* места нет или хранилище недоступно — просто не сохраняем */ }
 }
@@ -61,7 +62,7 @@ function goOffline(snap) {
   Object.assign(state, {
     session: { user: snap.user }, me: snap.me, household: snap.household, members: snap.members,
     accounts: snap.accounts, categoryGroups: snap.categoryGroups, categories: snap.categories,
-    cashbacks: snap.cashbacks, balances: snap.balances,
+    cashbacks: snap.cashbacks, balances: snap.balances, limitTx: snap.limitTx ?? [],
     transactions: snap.months[isoDate(state.month)] ?? [],
     offline: { savedAt: snap.savedAt },
   });
@@ -154,7 +155,7 @@ export async function loadProfile() {
   if (!state.session) {
     Object.assign(state, {
       me: null, household: null, members: [], accounts: [], categoryGroups: [], categories: [], cashbacks: [],
-      transactions: [], balances: {},
+      transactions: [], limitTx: [], balances: {},
     });
     return;
   }
@@ -178,8 +179,19 @@ export async function loadAll() {
     api.listCashbacks(currentMonthIso()), loadBalances(), loadMonth(),
   ]);
   if (!me) return loadProfile(); // нас удалили из семьи — вернуться на экран выбора
-  Object.assign(state, { me, household: me.household, members, accounts, categoryGroups, categories, cashbacks });
+  const limitTx = await loadLimitTx(categories);
+  Object.assign(state, { me, household: me.household, members, accounts, categoryGroups, categories, cashbacks, limitTx });
   saveSnapshot();
+}
+
+// Траты за все сроки лимитов. Если лимитов со сроком нет, лишний запрос не нужен.
+async function loadLimitTx(categories) {
+  const dated = categories.filter((c) => c.monthly_limit && c.limit_from && c.limit_until);
+  if (!dated.length) return [];
+  const from = dated.map((c) => c.limit_from).sort()[0], until = dated.map((c) => c.limit_until).sort().at(-1);
+  const end = parseIso(until);
+  end.setDate(end.getDate() + 1);
+  return (await api.listTransactions(from, isoDate(end))).filter((t) => t.kind === 'expense');
 }
 
 export const currentMonthIso = () => isoDate(monthStart(new Date()));
@@ -262,9 +274,9 @@ export const saveStartBalances = (changes) => act(async () => {
 }, 'Стартовые остатки сохранены');
 export const deleteAccount = (id) => act(() => api.deleteAccount(id), 'Счёт удалён');
 export const saveCategory = (c) => act(() => api.saveCategory(c), 'Категория сохранена');
-// Лимиты сразу для нескольких категорий: [{ category, monthly_limit }].
+// Лимиты сразу для нескольких категорий: [{ category, monthly_limit, limit_from, limit_until }].
 export const saveCategoryLimits = (changes) => act(async () => {
-  for (const { category, monthly_limit } of changes) await api.saveCategory({ ...category, monthly_limit });
+  for (const { category, ...limit } of changes) await api.saveCategory({ ...category, ...limit });
 }, 'Лимиты сохранены');
 export const deleteCategory = (id) => act(() => api.deleteCategory(id), 'Категория удалена');
 export const saveCategoryGroup = (g) => act(() => api.saveCategoryGroup(g), 'Раздел сохранён');

@@ -1,12 +1,14 @@
 // Какие разделители раскрыты. При каждом запуске приложения всё свёрнуто,
 // а пока приложение открыто, раскрытое остаётся раскрытым при переходах между экранами.
 import { reactive, ref, watch } from 'vue';
-import { localGet, localSet } from './utils.js?v=2610311858';
+import { localGet, localSet } from './utils.js?v=2610312014';
 
 export const expanded = {
   accountGroups: reactive(new Set()),  // группы счетов на главной
   categorySections: reactive(new Set()), // разделы категорий в настройках
   reportGroups: reactive(new Set()),   // разделы в отчётах
+  limitSections: reactive(new Set()),  // разделы в списке лимитов
+  adviceSections: reactive(new Set()), // разделы в предложении лимитов
 };
 
 // Упрощённый вид: только главная — доступные деньги, кэшбэки и карты. Запоминается на этом устройстве.

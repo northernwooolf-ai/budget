@@ -1051,6 +1051,25 @@ html.modal-open { overflow: hidden; }
 }
 .advice-total { margin: 0; padding-top: 8px; border-top: 1px solid var(--border); }
 .advisor-actions { justify-content: flex-end; }
+.advisor .section { gap: 0; }
+
+/* Лимиты по разделам */
+.limit-sections { display: flex; flex-direction: column; gap: 14px; }
+.limit-section { display: flex; flex-direction: column; gap: 10px; }
+.limit-head { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+.limit-children { padding-left: 14px; border-left: 2px solid var(--border); }
+.limit-top { align-items: baseline; }
+.limit-name { min-width: 0; overflow-wrap: anywhere; }
+.limit-name .chev { vertical-align: -4px; margin-right: 2px; }
+.limit-sum { flex: none; }
+
+/* История кэшбэков */
+.cb-history .group-head { margin: 0; }
+.cb-history .group-head h2 { margin: 0; }
+.cb-history-filters { margin: 12px 0; }
+.cb-history-filters select { flex: 1 1 130px; min-width: 0; }
+.cb-history-filters input { flex: 1 1 150px; min-width: 0; min-height: 36px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.cb-history-month { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 
 /* Операции, обычный вид: подписи фильтра по центру своих плашек. */
 .view-legend.legend-center button { text-align: center; }

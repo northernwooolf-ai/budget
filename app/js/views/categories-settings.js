@@ -3,11 +3,11 @@ import { ref, reactive, computed } from 'vue';
 import {
   state, isAdmin, saveCategory, deleteCategory, setArchived, reorder, moveCategory,
   saveCategoryGroup, deleteCategoryGroup,
-} from '../store.js?v=2610311858';
-import { money, parseAmount, amountToInput, bySort } from '../utils.js?v=2610311858';
-import { expanded, toggleIn } from '../ui-state.js?v=2610311858';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610311858';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610311858';
+} from '../store.js?v=2610312014';
+import { money, parseAmount, amountToInput, bySort, parseIso, today } from '../utils.js?v=2610312014';
+import { expanded, toggleIn } from '../ui-state.js?v=2610312014';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610312014';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable } from '../components.js?v=2610312014';
 
 const parseLimit = (s) => (s === '' ? null : parseAmount(s));
 
@@ -76,6 +76,7 @@ const CategoryEditor = {
       archived: c.archived ?? false,
       sort: c.sort,
     });
+    const until = ref(c.limit_until ?? '');
     const busy = ref(false);
     const error = ref('');
     const groups = computed(() => state.categoryGroups.filter((g) => g.kind === form.kind).sort(bySort));
@@ -88,10 +89,13 @@ const CategoryEditor = {
       // Новая категория или перенесённая в другой раздел встаёт в его конец.
       const sort = form.id && form.group_id === (c.group_id ?? null) ? form.sort
         : state.categories.filter((x) => x.kind === form.kind && (x.group_id ?? null) === form.group_id).length + 1;
+      // Срок отправляем, только если он изменился.
+      const end = (form.kind === 'expense' && limit !== null && until.value) || null;
+      const term = end === (c.limit_until ?? null) ? {} : { limit_from: end ? c.limit_from ?? today() : null, limit_until: end };
       busy.value = true;
       try {
         await saveCategory({
-          ...form, sort, name: form.name.trim(), monthly_limit: form.kind === 'expense' ? limit : null,
+          ...form, ...term, sort, name: form.name.trim(), monthly_limit: form.kind === 'expense' ? limit : null,
         });
         emit('close');
       } catch { /* показано */ } finally { busy.value = false; }
@@ -105,7 +109,7 @@ const CategoryEditor = {
       } catch { /* показано */ } finally { busy.value = false; }
     }
 
-    return { form, groups, tree, busy, error, save, toggleArchive, groupLabel };
+    return { form, until, groups, tree, busy, error, save, toggleArchive, groupLabel };
   },
   template: `
     <modal :title="form.id ? 'Категория' : 'Новая категория'" @close="$emit('close')">
@@ -124,9 +128,14 @@ const CategoryEditor = {
         </label>
         <div><div class="field-label">Значок</div><emoji-picker v-model="form.icon"/></div>
         <label v-if="form.kind==='expense'" class="field">
-          <span>Лимит в месяц, ₽</span>
+          <span>Лимит, ₽</span>
           <input v-model="form.monthly_limit" inputmode="decimal" placeholder="Без лимита">
           <small class="hint">Приложение покажет, сколько осталось, и предупредит о превышении</small>
+        </label>
+        <label v-if="form.kind==='expense' && form.monthly_limit !== ''" class="field">
+          <span>Действует до</span>
+          <input v-model="until" type="date">
+          <small class="hint">Пусто — лимит на каждый календарный месяц</small>
         </label>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       </form>
@@ -146,7 +155,13 @@ const CategoryRow = {
   emits: ['open'],
   setup(props) {
     const archive = () => setArchived('categories', props.category, true).catch(() => {});
-    return { archive, money };
+    const limitText = computed(() => {
+      const c = props.category;
+      if (!c.monthly_limit) return '';
+      if (!c.limit_until) return `лимит ${money(c.monthly_limit)} в месяц`;
+      return `лимит ${money(c.monthly_limit)} до ${parseIso(c.limit_until).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '')}`;
+    });
+    return { archive, limitText };
   },
   template: `
     <div class="row s-item">
@@ -155,7 +170,7 @@ const CategoryRow = {
         <span class="tx-icon" aria-hidden="true">{{ category.icon }}</span>
         <span class="tx-main">
           <span class="tx-title">{{ label }}</span>
-          <span class="tx-sub">{{ category.monthly_limit ? 'лимит ' + money(category.monthly_limit) + ' в месяц' : '' }}</span>
+          <span class="tx-sub">{{ limitText }}</span>
         </span>
       </button>
       <confirm-button v-if="admin" label="Убрать в архив" confirm-text="В архив?" @confirm="archive"/>

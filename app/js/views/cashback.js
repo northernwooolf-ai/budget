@@ -1,14 +1,14 @@
 // Кэшбэки: раз в месяц выбираете по картам («Супермаркеты 7%»), привязываете к своим категориям,
 // а приложение подсказывает, какой картой что выгоднее покупать.
 import { ref, computed, watch, nextTick } from 'vue';
-import { api } from '../api.js?v=2610311858';
-import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610311858';
-import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610311858';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610311858';
-import { Icon, Modal } from '../components.js?v=2610311858';
-import { toggleIn } from '../ui-state.js?v=2610311858';
-import { CardChip, AccountSelect } from '../cards.js?v=2610311858';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610311858';
+import { api } from '../api.js?v=2610312014';
+import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610312014';
+import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610312014';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610312014';
+import { Icon, Modal } from '../components.js?v=2610312014';
+import { toggleIn } from '../ui-state.js?v=2610312014';
+import { CardChip, AccountSelect } from '../cards.js?v=2610312014';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610312014';
 
 // Карты, по которым бывает кэшбэк: наличные и вклады не нужны.
 const cardAccounts = () => state.accounts
@@ -33,6 +33,25 @@ export function cashbackHint(categoryId, accountId) {
   const here = list.find((c) => c.account_id === accountId);
   if (here && Number(here.percent) >= Number(best.percent)) return { kind: 'ok', percent: here.percent, label: here.label };
   return { kind: 'better', percent: best.percent, label: best.label, accountId: best.account_id, accountName: accountName(best.account_id) };
+}
+
+// Каждая категория кэшбэка («Супермаркеты») — одной строкой, рядом все карты с ней: выгоднейшая первой.
+function groupByLabel(cashbacks) {
+  const order = new Map(ACCOUNT_TYPES
+    .flatMap((t) => state.accounts.filter((a) => typeOf(a).id === t.id).sort(bySort))
+    .map((a, i) => [a.id, i]));
+  const pos = (c) => order.get(c.account_id) ?? Infinity;
+  const byPercent = (a, b) => Number(b.percent) - Number(a.percent) || pos(a) - pos(b);
+  const map = new Map();
+  for (const c of cashbacks) {
+    const key = c.label.trim().toLowerCase();
+    if (!map.has(key)) map.set(key, { key, label: c.label.trim(), items: [] });
+    map.get(key).items.push(c);
+  }
+  const list = [...map.values()];
+  list.forEach((g) => g.items.sort(byPercent));
+  // Порядок строк — как у карт на главной (по лучшей карте строки), у одной карты — по проценту.
+  return list.sort((a, b) => pos(a.items[0]) - pos(b.items[0]) || byPercent(a.items[0], b.items[0]));
 }
 
 const LABELS = ['Супермаркеты', 'Рестораны и кафе', 'Фастфуд', 'АЗС', 'Такси', 'Транспорт', 'Аптеки', 'Красота',
@@ -295,6 +314,92 @@ const CashbackEditor = {
     </modal>`,
 };
 
+// Отчёт: какие кэшбэки были в прошлые месяцы. Загружается при первом раскрытии.
+const HISTORY_PAGE = 6; // сколько месяцев показывать, пока не попросят ещё
+
+export const CashbackHistory = {
+  components: { Icon, CardChip },
+  setup() {
+    const open = ref(false);
+    const rows = ref(null);
+    const error = ref('');
+    const cardFilter = ref('');
+    const query = ref('');
+    const shown = ref(HISTORY_PAGE);
+
+    async function load() {
+      try {
+        rows.value = await api.listCashbackHistory();
+        error.value = '';
+      } catch (e) {
+        error.value = state.offline ? 'История кэшбэков появится, когда будет связь' : e.message;
+      }
+    }
+    function toggle() {
+      open.value = !open.value;
+      if (open.value && !rows.value) load();
+    }
+    // Изменения в кэшбэках сразу попадают в открытую историю.
+    watch(() => state.cashbacks, () => { if (open.value) load(); });
+
+    const accountOf = (id) => state.accounts.find((a) => a.id === id);
+    // Счета в фильтре: только те, по которым кэшбэки были, включая ушедшие в архив.
+    const cards = computed(() => [...new Set((rows.value ?? []).map((c) => c.account_id))]
+      .map(accountOf).filter(Boolean).sort(bySort));
+    const months = computed(() => {
+      const q = query.value.trim().toLowerCase();
+      const map = new Map();
+      for (const c of rows.value ?? []) {
+        if (!accountOf(c.account_id)) continue;
+        if (cardFilter.value && c.account_id !== cardFilter.value) continue;
+        if (q && !c.label.toLowerCase().includes(q)) continue;
+        if (!map.has(c.month)) map.set(c.month, []);
+        map.get(c.month).push(c);
+      }
+      return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([month, list]) => ({ month, title: monthLabel(parseIso(month)), groups: groupByLabel(list) }));
+    });
+    return { open, rows, error, cardFilter, query, shown, months, cards, toggle, accountOf, accountName, formatPercent, HISTORY_PAGE };
+  },
+  template: `
+    <div class="card pad cb-history">
+      <button type="button" class="group-head" :aria-expanded="open" @click="toggle">
+        <icon name="down" :class="['chev', { closed: !open }]" :size="18"/>
+        <h2>История кэшбэков</h2>
+      </button>
+      <template v-if="open">
+        <p v-if="error" class="form-error">{{ error }}</p>
+        <p v-else-if="!rows" class="hint">Загрузка…</p>
+        <p v-else-if="!rows.length" class="empty">Кэшбэков пока нет. Они появятся здесь, когда вы выберете их на главной.</p>
+        <template v-else>
+          <div class="trend-controls cb-history-filters">
+            <select v-model="cardFilter" aria-label="Карта">
+              <option value="">Все карты</option>
+              <option v-for="a in cards" :key="a.id" :value="a.id">{{ a.name }}</option>
+            </select>
+            <input v-model="query" type="search" placeholder="Поиск: супермаркеты" aria-label="Поиск по категории кэшбэка">
+          </div>
+          <p v-if="!months.length" class="hint">Ничего не найдено.</p>
+          <div v-for="m in months.slice(0, shown)" :key="m.month" class="cb-history-month">
+            <div class="section-title">{{ m.title }}</div>
+            <ul class="cb-best">
+              <li v-for="g in m.groups" :key="g.key" class="cb-line">
+                <span class="cb-label">{{ g.label }}</span>
+                <span class="cb-cards">
+                  <span v-for="c in g.items" :key="c.id" class="cb-card-btn" role="img"
+                    :aria-label="accountName(c.account_id) + ', кэшбэк ' + formatPercent(c.percent)" :title="accountName(c.account_id)">
+                    <card-chip :account="accountOf(c.account_id)" size="cb" :percent="formatPercent(c.percent)"/>
+                  </span>
+                </span>
+              </li>
+            </ul>
+          </div>
+          <button v-if="months.length > shown" type="button" class="btn small" @click="shown += HISTORY_PAGE">Показать ещё</button>
+        </template>
+      </template>
+    </div>`,
+};
+
 // Окно «Оплатить»: какой картой платить. Открыть Mir Pay из веб-приложения нельзя:
 // браузер запускает только приложения с открытыми ссылками, а у Mir Pay их нет.
 const PaySheet = {
@@ -321,26 +426,10 @@ export const CashbackCard = {
   setup() {
     const editing = ref(false);
     const paying = ref(null);
-    // Каждая категория кэшбэка («Супермаркеты») — одной строкой, рядом все карты с ней: выгоднейшая первой.
-    const groups = computed(() => {
-      const order = new Map(ACCOUNT_TYPES
-        .flatMap((t) => state.accounts.filter((a) => typeOf(a).id === t.id).sort(bySort))
-        .map((a, i) => [a.id, i]));
-      const pos = (c) => order.get(c.account_id) ?? Infinity;
-      const byPercent = (a, b) => Number(b.percent) - Number(a.percent) || pos(a) - pos(b);
-      const map = new Map();
-      for (const c of state.cashbacks) {
-        const account = state.accounts.find((a) => a.id === c.account_id);
-        if (!account || account.archived) continue;
-        const key = c.label.trim().toLowerCase();
-        if (!map.has(key)) map.set(key, { key, label: c.label.trim(), items: [] });
-        map.get(key).items.push(c);
-      }
-      const list = [...map.values()];
-      list.forEach((g) => g.items.sort(byPercent));
-      // Порядок строк — как у карт на главной (по лучшей карте строки), у одной карты — по проценту.
-      return list.sort((a, b) => pos(a.items[0]) - pos(b.items[0]) || byPercent(a.items[0], b.items[0]));
-    });
+    const groups = computed(() => groupByLabel(state.cashbacks.filter((c) => {
+      const account = state.accounts.find((a) => a.id === c.account_id);
+      return account && !account.archived;
+    })));
     const IN_MONTH = ['январе', 'феврале', 'марте', 'апреле', 'мае', 'июне', 'июле', 'августе', 'сентябре', 'октябре', 'ноябре', 'декабре'];
     const accountOf = (id) => state.accounts.find((a) => a.id === id);
     return { editing, paying, groups, accountName, accountOf, formatPercent, inMonth: IN_MONTH[new Date().getMonth()] };

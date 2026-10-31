@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610311858';
-import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610311858';
-import { pick } from './utils.js?v=2610311858';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610312014';
+import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610312014';
+import { pick } from './utils.js?v=2610312014';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -135,6 +135,10 @@ export default {
     if (error) throw friendlyError(error);
     return data;
   },
+  // Кэшбэки за все месяцы, сначала новые.
+  listCashbackHistory: () =>
+    fetchAll(() => sb.from('cashbacks').select('*')
+      .order('month', { ascending: false }).order('percent', { ascending: false }).order('id')),
   saveCashback: (c) => save('cashbacks', CASHBACK_FIELDS, c),
   deleteCashback: (id) => remove('cashbacks', id),
 
