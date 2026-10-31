@@ -1,12 +1,12 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610301653';
-import { state, isAdmin } from '../store.js?v=2610301653';
-import { LimitAdvisor } from './limit-advisor.js?v=2610301653';
-import { expanded, toggleIn } from '../ui-state.js?v=2610301653';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610301653';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610301653';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610301653';
-import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610301653';
+import { api } from '../api.js?v=2610311858';
+import { state, isAdmin } from '../store.js?v=2610311858';
+import { LimitAdvisor, hasAdvice } from './limit-advisor.js?v=2610311858';
+import { expanded, toggleIn } from '../ui-state.js?v=2610311858';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610311858';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitStatus } from '../categories.js?v=2610311858';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610311858';
+import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610311858';
 
 // Выбранный вид запоминается на устройстве.
 function remembered(key, fallback) {
@@ -105,7 +105,7 @@ export const ReportsView = {
     });
 
     const limits = computed(() => limitStatus(state.transactions));
-    const advising = ref(false); // открыт расчёт рекомендованных лимитов
+    const advising = ref(hasAdvice()); // открыт расчёт лимитов; неутверждённое предложение сохраняется между запусками
     const admin = computed(isAdmin);
 
     // Динамика по месяцам: операции за выбранный период загружаются один раз.

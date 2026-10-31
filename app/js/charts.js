@@ -1,7 +1,7 @@
 // Диаграммы отчётов: кольцо (доли) и динамика по месяцам (столбцы или линии).
 import { ref, computed, watch } from 'vue';
 // Графики показывают итоги — без копеек.
-import { rub as money, monthShort, monthLabel } from './utils.js?v=2610301653';
+import { rub as money, monthShort, monthLabel } from './utils.js?v=2610311858';
 
 // Цвета частей в фиксированном порядке; девятая и дальше части уходят в «Остальное».
 export const SLICE_COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)'];
@@ -45,19 +45,34 @@ export const RingChart = {
     </svg>`,
 };
 
+// Шаг шкалы: 1, 2, 2,5 или 5, умноженные на степень десяти, примерно 4 деления на графике.
+function niceStep(top) {
+  const raw = top / 4, power = 10 ** Math.floor(Math.log10(raw)), n = raw / power;
+  return Math.max(1, (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * power);
+}
+// Подпись на оси: 150 000 → «150 тыс», 1 500 000 → «1,5 млн».
+function shortMoney(v) {
+  const text = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
+  if (v >= 1e6) return `${text(v / 1e6)} млн`;
+  return v >= 1000 ? `${text(v / 1000)} тыс` : String(v);
+}
+
 // rows: [{ date, values: { key: число } }], series: [{ key, label, color }], mode: 'bars' | 'lines'.
 export const TrendChart = {
   props: { rows: Array, series: Array, mode: String },
   setup(props) {
-    const W = 340, H = 190, PAD_X = 10, PAD_B = 24, PAD_T = 14;
+    const W = 340, H = 190, PAD_L = 44, PAD_R = 8, PAD_B = 24, PAD_T = 14;
     const hover = ref(null);
     watch(() => props.rows.length, () => { hover.value = null; });
-    const max = computed(() => Math.max(1, ...props.rows.flatMap((r) => props.series.map((s) => r.values[s.key] ?? 0))));
-    const step = computed(() => (W - PAD_X * 2) / Math.max(1, props.rows.length));
-    const cx = (i) => PAD_X + step.value * i + step.value / 2;
+    const top = computed(() => Math.max(1, ...props.rows.flatMap((r) => props.series.map((s) => r.values[s.key] ?? 0))));
+    // Шкала с круглыми подписями: верх графика — ближайшее круглое значение над самым большим.
+    const tickStep = computed(() => niceStep(top.value));
+    const max = computed(() => Math.ceil(top.value / tickStep.value) * tickStep.value);
+    const step = computed(() => (W - PAD_L - PAD_R) / Math.max(1, props.rows.length));
+    const cx = (i) => PAD_L + step.value * i + step.value / 2;
     const y = (v) => PAD_T + (H - PAD_B - PAD_T) * (1 - v / max.value);
     const base = H - PAD_B;
-    const grid = computed(() => [0.25, 0.5, 0.75, 1].map((f) => y(max.value * f)));
+    const ticks = computed(() => Array.from({ length: Math.round(max.value / tickStep.value) }, (_, i) => (i + 1) * tickStep.value));
 
     // Столбцы: по одному на серию в каждом месяце, скруглённый верх, ровный низ.
     const barW = computed(() => Math.min(18, (step.value - 12) / props.series.length - 2));
@@ -78,7 +93,7 @@ export const TrendChart = {
     }
     const area = (key) => `${line(key)} L${cx(props.rows.length - 1)},${base} L${cx(0)},${base} Z`;
 
-    return { W, H, base, hover, step, cx, y, grid, bar, line, area, money, monthShort, monthLabel };
+    return { W, H, PAD_L, base, hover, step, cx, y, ticks, shortMoney, bar, line, area, money, monthShort, monthLabel };
   },
   template: `
     <div class="chart-wrap">
@@ -91,8 +106,12 @@ export const TrendChart = {
             <stop offset="0" :stop-color="s.color" stop-opacity=".28"/><stop offset="1" :stop-color="s.color" stop-opacity="0"/>
           </linearGradient>
         </defs>
-        <line v-for="(gy, i) in grid" :key="i" x1="0" :x2="W" :y1="gy" :y2="gy" class="gridline"/>
-        <line x1="0" :x2="W" :y1="base" :y2="base" class="axis"/>
+        <template v-for="v in ticks" :key="v">
+          <line :x1="PAD_L" :x2="W" :y1="y(v)" :y2="y(v)" class="gridline"/>
+          <text :x="PAD_L - 5" :y="y(v) + 3" text-anchor="end" class="tick">{{ shortMoney(v) }}</text>
+        </template>
+        <line :x1="PAD_L" :x2="W" :y1="base" :y2="base" class="axis"/>
+        <text :x="PAD_L - 5" :y="base + 3" text-anchor="end" class="tick">0</text>
         <rect v-if="hover !== null" :x="cx(hover) - step / 2" y="0" :width="step" :height="base" class="hit on"/>
         <template v-if="mode === 'lines'">
           <template v-for="s in series" :key="s.key">

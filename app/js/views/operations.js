@@ -1,11 +1,11 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610301653';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610301653';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610301653';
-import { CategoryPicker } from './category-picker.js?v=2610301653';
-import { Icon, Modal, MonthSwitcher, vLongPress } from '../components.js?v=2610301653';
-import { cashbackHint } from './cashback.js?v=2610301653';
-import { CardChip, AccountSelect } from '../cards.js?v=2610301653';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610311858';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610311858';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610311858';
+import { CategoryPicker } from './category-picker.js?v=2610311858';
+import { Icon, Modal, MonthSwitcher, vLongPress } from '../components.js?v=2610311858';
+import { cashbackHint } from './cashback.js?v=2610311858';
+import { CardChip, AccountSelect } from '../cards.js?v=2610311858';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -67,7 +67,7 @@ export const OperationsView = {
       return { icon: cat?.icon ?? '❔', title: cat?.name ?? 'Без категории', sub: [t.note, acc?.name], acc };
     }
 
-    // Вид «как в таблице»: расход слева, переводы посередине, доход справа — тип виден по месту суммы.
+    // Вид «Оригинальный»: расход слева, переводы посередине, доход справа — тип виден по месту суммы.
     const listView = ref(localGet('ops-view', 'table'));
     watch(listView, (v) => localSet('ops-view', v));
 
@@ -96,12 +96,12 @@ export const OperationsView = {
       <!-- Переключатель по центру и не двигается. -->
       <div class="view-bar">
         <div class="segmented mini" role="radiogroup" aria-label="Вид списка">
-          <button :class="{ active: listView === 'table' }" @click="listView = 'table'">Как в таблице</button>
+          <button :class="{ active: listView === 'table' }" @click="listView = 'table'">Оригинальный</button>
           <button :class="{ active: listView === 'list' }" @click="listView = 'list'">Обычный</button>
         </div>
       </div>
-      <!-- Плашка-фильтр прилипает к верху экрана при прокрутке; в виде «как в таблице» подписи стоят над своими колонками. -->
-      <div :class="['plate', 'sticky-plate', 'view-legend', { filtered: kindFilter }]" role="group" aria-label="Показать только">
+      <!-- Плашка-фильтр прилипает к верху экрана при прокрутке; в виде «Оригинальный» подписи стоят над своими колонками, в обычном — по центру. -->
+      <div :class="['plate', 'sticky-plate', 'view-legend', { filtered: kindFilter, 'legend-center': listView !== 'table' }]" role="group" aria-label="Показать только">
         <button v-for="k in KINDS" :key="k.id" type="button" :class="[k.cls, { on: kindFilter === k.id }]"
           :aria-pressed="kindFilter === k.id" @click="toggleKind(k.id)">
           {{ listView === 'table' ? k.table : k.label }}

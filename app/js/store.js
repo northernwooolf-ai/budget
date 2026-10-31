@@ -1,7 +1,7 @@
 // Состояние приложения и действия над ним. Экраны читают state и вызывают эти функции.
 import { reactive } from 'vue';
-import { api, isDemo } from './api.js?v=2610301653';
-import { monthStart, addMonths, isoDate } from './utils.js?v=2610301653';
+import { api, isDemo } from './api.js?v=2610311858';
+import { monthStart, addMonths, isoDate } from './utils.js?v=2610311858';
 
 export const state = reactive({
   isDemo,
@@ -50,7 +50,11 @@ function saveSnapshot() {
   } catch { /* места нет или хранилище недоступно — просто не сохраняем */ }
 }
 
-export const OFFLINE_TEXT = 'Нет интернета — изменения недоступны';
+const BOOT_LIMIT_MS = 3500;  // дольше этого с начала запуска не ждём сеть, если есть снимок
+const RECONNECT_MS = 20000;  // как часто проверять, вернулась ли связь
+export const ADVICE_KEY = 'limit-advice-v1'; // предложение GigaChat по лимитам, пока его не применили или не отменили
+
+export const OFFLINE_TEXT = 'Нет связи — изменения недоступны';
 const isNetworkError = (e) => /связи с сервером|failed to fetch|networkerror|load failed/i.test(e?.message ?? '');
 
 function goOffline(snap) {
@@ -65,11 +69,15 @@ function goOffline(snap) {
 }
 
 // Сеть вернулась — загрузить свежие данные и снова разрешить изменения.
+let reconnecting = false;
 async function reconnect() {
-  if (!state.offline) return;
+  if (!state.offline || reconnecting) return;
+  reconnecting = true;
   try {
     const session = await api.getSession();
     if (!session) return;
+    // Снимок остаётся на экране, пока база не ответит.
+    await api.getMe(session.user.id);
     state.session = session;
     state.offline = null;
     await loadProfile();
@@ -78,9 +86,15 @@ async function reconnect() {
   } catch {
     const snap = readSnapshot();
     if (snap) goOffline(snap);
+  } finally {
+    reconnecting = false;
   }
 }
-if (!isDemo) window.addEventListener('online', () => setTimeout(reconnect, 1000));
+if (!isDemo) {
+  window.addEventListener('online', () => setTimeout(reconnect, 1000));
+  // Сеть бывает «есть, но не отвечает», и тогда браузер ни о чём не сообщает: проверяем сами.
+  setInterval(reconnect, RECONNECT_MS);
+}
 
 let authListening = false;
 function listenAuth() {
@@ -107,12 +121,26 @@ export function toast(text, type = 'ok') {
 
 export async function init() {
   const snap = isDemo ? null : readSnapshot();
+  // Без сети запросы могут молчать очень долго, а телефон при этом считает, что интернет есть.
+  // Если сеть не ответила вовремя, показываем снимок, а она тем временем пусть догружается.
+  const slowTimer = snap && setTimeout(() => {
+    goOffline(snap);
+    state.ready = true;
+  }, Math.max(0, BOOT_LIMIT_MS - performance.now()));
   try {
-    if (snap && navigator.onLine === false) return goOffline(snap);
-    state.session = await api.getSession();
+    if (snap && navigator.onLine === false) {
+      clearTimeout(slowTimer);
+      return goOffline(snap);
+    }
+    const session = await api.getSession();
+    if (!state.offline) state.session = session;
     listenAuth();
-    await loadProfile();
+    if (!state.offline) await loadProfile();
+    clearTimeout(slowTimer);
+    reconnect(); // успели показать снимок — заменить его свежими данными
   } catch (e) {
+    clearTimeout(slowTimer);
+    if (state.offline) return;
     if (snap && isNetworkError(e)) goOffline(snap);
     else toast(e.message, 'error');
   } finally {
@@ -294,7 +322,7 @@ export async function setupHousehold(mode, { name, code, displayName }) {
 
 // При выходе снимок данных стирается: на устройстве не остаётся чужих денег.
 export async function signOut() {
-  try { localStorage.removeItem(SNAPSHOT_KEY); } catch { /* хранилище недоступно */ }
+  try { localStorage.removeItem(SNAPSHOT_KEY); localStorage.removeItem(ADVICE_KEY); } catch { /* хранилище недоступно */ }
   if (state.offline) {
     state.offline = null;
     state.session = null;

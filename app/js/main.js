@@ -1,18 +1,18 @@
 import { createApp, ref, onMounted, onBeforeUnmount } from 'vue';
-import { state, init } from './store.js?v=2610301653';
-import { localGet, localSet } from './utils.js?v=2610301653';
-import { Icon } from './components.js?v=2610301653';
-import { appearance } from './appearance.js?v=2610301653';
-import { lock } from './lock.js?v=2610301653';
-import { LockScreen } from './views/lock-screen.js?v=2610301653';
-import { AuthView, OnboardingView } from './views/auth.js?v=2610301653';
-import { OperationsView, TxEditor, copyOfTx } from './views/operations.js?v=2610301653';
-import { HomeView } from './views/home.js?v=2610301653';
-import { ReportsView } from './views/reports.js?v=2610301653';
-import { SettingsView } from './views/settings.js?v=2610301653';
-import { ImportView } from './views/import.js?v=2610301653';
-import { AssistantChat } from './views/assistant.js?v=2610301653';
-import { simpleView } from './ui-state.js?v=2610301653';
+import { state, init } from './store.js?v=2610311858';
+import { localGet, localSet } from './utils.js?v=2610311858';
+import { Icon } from './components.js?v=2610311858';
+import { appearance } from './appearance.js?v=2610311858';
+import { lock } from './lock.js?v=2610311858';
+import { LockScreen } from './views/lock-screen.js?v=2610311858';
+import { AuthView, OnboardingView } from './views/auth.js?v=2610311858';
+import { OperationsView, TxEditor, copyOfTx } from './views/operations.js?v=2610311858';
+import { HomeView } from './views/home.js?v=2610311858';
+import { ReportsView } from './views/reports.js?v=2610311858';
+import { SettingsView } from './views/settings.js?v=2610311858';
+import { ImportView } from './views/import.js?v=2610311858';
+import { AssistantChat } from './views/assistant.js?v=2610311858';
+import { simpleView } from './ui-state.js?v=2610311858';
 
 const TABS = [
   { id: 'home', label: 'Главная', icon: 'home' },
@@ -61,7 +61,7 @@ const App = {
     <div v-if="appearance.bg" class="app-bg" :style="{ backgroundImage: 'url(' + appearance.bg + ')' }" aria-hidden="true"></div>
     <div v-if="state.isDemo" class="demo-banner">Демо-режим: данные хранятся только в этом браузере</div>
     <div v-if="state.offline" class="demo-banner offline-banner" role="status">
-      Нет интернета · данные на {{ savedAtLabel(state.offline.savedAt) }} · только просмотр
+      Нет связи · данные на {{ savedAtLabel(state.offline.savedAt) }} · только просмотр
     </div>
     <div v-if="!state.ready" class="center-page"><p class="muted">Загрузка…</p></div>
     <auth-view v-else-if="!state.session"/>

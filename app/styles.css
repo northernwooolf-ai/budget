@@ -941,9 +941,9 @@ html.modal-open { overflow: hidden; }
 
 /* Круглые кнопки по дуге вокруг «+»: подложка акцентного цвета, как у самой кнопки.
    Отсчёт от центра «+»: кнопка 52px ровно под ним, затем сдвиг на радиус 90px. */
-.fab-round.arc-1 { --x: -90px; --y: 0px; }
-.fab-round.arc-2 { --x: -64px; --y: -64px; }
-.fab-round.arc-3 { --x: 0px; --y: -90px; }
+.fab-round.arc-1 { --x: -90px; --y: 0px; --in: 0s; --out: .2s; }
+.fab-round.arc-2 { --x: -64px; --y: -64px; --in: .1s; --out: .1s; }
+.fab-round.arc-3 { --x: 0px; --y: -90px; --in: .2s; --out: 0s; }
 
 /* Помощник — отдельная вкладка: поле вопроса внизу экрана, над меню. */
 .main.main-chat { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
@@ -979,14 +979,12 @@ html.modal-open { overflow: hidden; }
   width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
   background: var(--primary); color: var(--primary-ink); box-shadow: 0 4px 14px rgb(0 0 0 / .35);
   transform: translate(0, 0) scale(.4); opacity: 0; visibility: hidden; pointer-events: none;
-  transition: transform .24s cubic-bezier(.4, 0, .6, 1), opacity .2s ease-in, visibility 0s .24s;
+  transition: transform .26s cubic-bezier(.4, 0, .6, 1) var(--out), opacity .2s ease-in var(--out), visibility 0s calc(var(--out) + .26s);
 }
 .fab-arc.open .fab-round {
   transform: translate(var(--x), var(--y)); opacity: 1; visibility: visible; pointer-events: auto;
-  transition: transform .3s cubic-bezier(.2, .9, .3, 1.15), opacity .18s ease-out, visibility 0s;
+  transition: transform .3s cubic-bezier(.2, .9, .3, 1.15) var(--in), opacity .18s ease-out var(--in), visibility 0s var(--in);
 }
-.fab-arc.open .arc-2 { transition-delay: .04s; }
-.fab-arc.open .arc-3 { transition-delay: .08s; }
 .fab-backdrop {
   position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / .25);
   opacity: 0; pointer-events: none; transition: opacity .24s;
@@ -1039,9 +1037,10 @@ html.modal-open { overflow: hidden; }
 .advisor { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
 .advisor-busy { display: flex; align-items: center; gap: 10px; padding: 12px 0; color: var(--text-2); }
 .advisor-busy .spinner { width: 20px; height: 20px; }
-.advice-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
-.advice-row.off { opacity: .55; }
-.advice-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.advice-item { border-top: 1px solid var(--border); }
+.advice-item.off .advice-row { opacity: .55; }
+.advice-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.advice-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
 .advice-text b { font-weight: 600; overflow-wrap: anywhere; line-height: 1.25; }
 .advice-text small { color: var(--muted); font-size: .78rem; }
 .advice-text .advice-reason { color: var(--text-2); }
@@ -1052,3 +1051,15 @@ html.modal-open { overflow: hidden; }
 }
 .advice-total { margin: 0; padding-top: 8px; border-top: 1px solid var(--border); }
 .advisor-actions { justify-content: flex-end; }
+
+/* Операции, обычный вид: подписи фильтра по центру своих плашек. */
+.view-legend.legend-center button { text-align: center; }
+
+/* Траты под предложением лимита */
+.advice-spending { margin: 0 0 10px 30px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); font-size: .85rem; }
+.advice-spending .hint, .advice-spending .form-error { margin: 4px 0; }
+.advice-tx { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; }
+.advice-tx b { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+.advice-tx-date { flex: none; width: 4.2em; color: var(--muted); }
+.advice-tx-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.advice-tx-total { justify-content: space-between; margin-top: 3px; padding-top: 6px; border-top: 1px solid var(--border); color: var(--text-2); }
