@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610312014';
-import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610312014';
-import { pick } from './utils.js?v=2610312014';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610312124';
+import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610312124';
+import { pick } from './utils.js?v=2610312124';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -112,8 +112,10 @@ export default {
       .order('date', { ascending: false }).order('created_at', { ascending: false }).order('id')),
   saveTransaction: (t) => save('transactions', TX_FIELDS, t),
   // Несколько новых операций одним запросом: сохраняются все или ни одной.
-  insertTransactions: (list) => run(sb.from('transactions').insert(list.map((t) => pick(t, TX_FIELDS)))),
+  insertTransactions: (list) => run(sb.from('transactions').insert(list.map((t) => pick(t, TX_FIELDS))).select('id')),
   deleteTransaction: (id) => remove('transactions', id),
+  // Вернуть удалённую операцию: номер и время создания те же, поэтому она встаёт на прежнее место в списке.
+  restoreTransaction: (t) => run(sb.from('transactions').insert(pick(t, [...TX_FIELDS, 'id', 'created_at']))),
 
   // Все движения по одному счёту: и списания с него, и переводы на него.
   listAccountTransactions: (accountId) =>

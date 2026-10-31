@@ -1,11 +1,11 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue';
-import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610312014';
-import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610312014';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610312014';
-import { CategoryPicker } from './category-picker.js?v=2610312014';
-import { Icon, Modal, MonthSwitcher, vLongPress } from '../components.js?v=2610312014';
-import { cashbackHint } from './cashback.js?v=2610312014';
-import { CardChip, AccountSelect } from '../cards.js?v=2610312014';
+import { state, isAdmin, canEditTx, saveTransaction, deleteTransaction, toast } from '../store.js?v=2610312124';
+import { money, rub, dayLabel, today, parseAmount, amountToInput, localGet, localSet, bySort } from '../utils.js?v=2610312124';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610312124';
+import { CategoryPicker } from './category-picker.js?v=2610312124';
+import { Icon, Modal, MonthSwitcher, vLongPress, vSwipeLeft } from '../components.js?v=2610312124';
+import { cashbackHint } from './cashback.js?v=2610312124';
+import { CardChip, AccountSelect } from '../cards.js?v=2610312124';
 
 // Справочники для быстрого поиска по id — общие для списка и редактора.
 export function useLookups() {
@@ -24,9 +24,51 @@ export const copyOfTx = (t) => ({
   category_id: t.category_id, date: t.date, note: t.note, spent_by: ownerOf(t),
 });
 
+// Свайп влево по операции спрашивает, удалить ли её. Окно одно на всё приложение.
+export const deletingTx = ref(null);
+// Что делает свайп по этой операции; null — свайпа нет: без связи или если её нельзя менять.
+export const swipeDelete = (t) => (!state.offline && canEditTx(t) ? () => { deletingTx.value = t; } : null);
+
+export const TxDeleteConfirm = {
+  components: { Modal },
+  props: { tx: Object },
+  emits: ['close'],
+  setup(props, { emit }) {
+    const { categoryById, accountById } = useLookups();
+    const busy = ref(false);
+    const cat = computed(() => categoryById.value[props.tx.category_id]);
+    const account = computed(() => accountById.value[props.tx.account_id]?.name ?? '?');
+    const toAccount = computed(() => accountById.value[props.tx.to_account_id]?.name ?? '?');
+    async function confirm() {
+      busy.value = true;
+      try {
+        await deleteTransaction(props.tx);
+        emit('close');
+      } catch { /* показано */ } finally { busy.value = false; }
+    }
+    return { busy, cat, account, toAccount, confirm, money, dayLabel };
+  },
+  template: `
+    <modal title="Удалить операцию?" @close="$emit('close')">
+      <div class="tx-row delete-preview">
+        <span class="tx-icon" aria-hidden="true">{{ tx.kind === 'transfer' ? '🔄' : cat?.icon ?? '❔' }}</span>
+        <span class="tx-main">
+          <span class="tx-title">{{ tx.kind === 'transfer' ? 'Перевод' : cat?.name ?? 'Без категории' }}</span>
+          <span class="tx-sub">{{ [dayLabel(tx.date), tx.kind === 'transfer' ? account + ' → ' + toAccount : account, tx.note].filter(Boolean).join(' · ') }}</span>
+        </span>
+        <span :class="['tx-amount', tx.kind]">{{ tx.kind === 'income' ? '+' : tx.kind === 'expense' ? '−' : '' }}{{ money(tx.amount) }}</span>
+      </div>
+      <template #footer>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" :disabled="busy" @click="$emit('close')">Отмена</button>
+        <button type="button" class="btn danger" :disabled="busy" @click="confirm">{{ busy ? 'Удаляю…' : 'Удалить' }}</button>
+      </template>
+    </modal>`,
+};
+
 export const OperationsView = {
   components: { Icon, MonthSwitcher, CardChip },
-  directives: { longPress: vLongPress },
+  directives: { longPress: vLongPress, swipeLeft: vSwipeLeft },
   emits: ['edit', 'copy'],
   setup() {
     const { categoryById, accountById } = useLookups();
@@ -77,7 +119,7 @@ export const OperationsView = {
       { id: 'income', label: 'доходы', table: 'доходы →', cls: 'income' },
     ];
 
-    return { state, totals, groups, view, listView, kindFilter, toggleKind, KINDS, money, rub, dayLabel };
+    return { state, totals, groups, view, listView, kindFilter, toggleKind, KINDS, money, rub, dayLabel, swipeDelete };
   },
   template: `
     <section class="page">
@@ -122,7 +164,7 @@ export const OperationsView = {
           <span v-if="g.expense" class="muted">−{{ rub(g.expense) }}</span>
         </div>
         <div v-if="listView === 'table'" class="card list">
-          <button v-for="t in g.items" :key="t.id" :class="['tx3', 'tx3-' + t.kind]" v-long-press="() => $emit('copy', t)" @click="$emit('edit', t)">
+          <button v-for="t in g.items" :key="t.id" :class="['tx3', 'tx3-' + t.kind]" v-long-press="() => $emit('copy', t)" v-swipe-left="swipeDelete(t)" @click="$emit('edit', t)">
             <template v-if="t.kind === 'expense'">
               <span class="z-left tx3-amount negative">−{{ money(t.amount) }}</span>
               <span class="z-mid"><span class="tx3-cat">{{ view(t).icon }} {{ view(t).title }}</span><small v-if="t.note">{{ t.note }}</small></span>
@@ -142,7 +184,7 @@ export const OperationsView = {
           </button>
         </div>
         <div v-else class="card list">
-          <button v-for="t in g.items" :key="t.id" class="tx-row" v-long-press="() => $emit('copy', t)" @click="$emit('edit', t)">
+          <button v-for="t in g.items" :key="t.id" class="tx-row" v-long-press="() => $emit('copy', t)" v-swipe-left="swipeDelete(t)" @click="$emit('edit', t)">
             <span class="tx-icon" aria-hidden="true">{{ view(t).icon }}</span>
             <span class="tx-main">
               <span class="tx-title">{{ view(t).title }}</span>
@@ -267,7 +309,7 @@ export const TxEditor = {
 
       busy.value = true;
       try {
-        await saveTransaction(draft);
+        await saveTransaction(draft, t);
         localSet('last-account', form.account_id);
         emit('close');
       } catch {
@@ -283,7 +325,7 @@ export const TxEditor = {
       if (!confirmDelete.value) return (confirmDelete.value = true);
       busy.value = true;
       try {
-        await deleteTransaction(form.id);
+        await deleteTransaction(t);
         emit('close');
       } catch { /* показано */ } finally {
         busy.value = false;

@@ -1,7 +1,7 @@
 // Состояние приложения и действия над ним. Экраны читают state и вызывают эти функции.
 import { reactive } from 'vue';
-import { api, isDemo } from './api.js?v=2610312014';
-import { monthStart, addMonths, isoDate, parseIso } from './utils.js?v=2610312014';
+import { api, isDemo } from './api.js?v=2610312124';
+import { monthStart, addMonths, isoDate, parseIso, money } from './utils.js?v=2610312124';
 
 export const state = reactive({
   isDemo,
@@ -18,6 +18,7 @@ export const state = reactive({
   month: monthStart(new Date()),
   transactions: [],  // операции выбранного месяца
   limitTx: [],       // траты за сроки лимитов: срок может выходить за выбранный месяц
+  undoStack: [],     // последние действия с операциями, которые можно отменить
   txLoading: false,
   dataVersion: 0,    // растёт при каждом обновлении данных — чтобы отчёты пересчитывались
   offline: null,     // { savedAt } — нет интернета, показан последний сохранённый снимок
@@ -155,7 +156,7 @@ export async function loadProfile() {
   if (!state.session) {
     Object.assign(state, {
       me: null, household: null, members: [], accounts: [], categoryGroups: [], categories: [], cashbacks: [],
-      transactions: [], limitTx: [], balances: {},
+      transactions: [], limitTx: [], balances: {}, undoStack: [],
     });
     return;
   }
@@ -163,6 +164,7 @@ export async function loadProfile() {
   state.me = me;
   state.household = me?.household ?? null;
   if (!me) return;
+  state.undoStack = readUndo(me.user_id);
   await loadAll();
   unsubscribe = api.subscribe(scheduleRefresh);
 }
@@ -259,13 +261,65 @@ async function act(fn, okText) {
   }
 }
 
-export const saveTransaction = (t) => act(() => api.saveTransaction(t), t.id ? 'Изменения сохранены' : 'Операция добавлена');
+// ---------- Отмена последних действий с операциями ----------
+// Список хранится на устройстве, поэтому отменить можно и после перезапуска приложения.
+const UNDO_KEY = 'tx-undo-v1';
+const UNDO_LIMIT = 5;
+
+function readUndo(userId) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(UNDO_KEY));
+    return saved?.userId === userId ? saved.items : [];
+  } catch { return []; }
+}
+function setUndo(items) {
+  state.undoStack = items;
+  try { localStorage.setItem(UNDO_KEY, JSON.stringify({ userId: state.me?.user_id, items })); } catch { /* останется до закрытия окна */ }
+}
+const remember = (entry) => setUndo([...state.undoStack, JSON.parse(JSON.stringify(entry))].slice(-UNDO_LIMIT));
+const describeTx = (t) => `${t.kind === 'transfer' ? 'перевод' : `«${state.categories.find((c) => c.id === t.category_id)?.name ?? 'Без категории'}»`} ${money(t.amount)}`;
+
+let undoing = false;
+export async function undoLast() {
+  const entry = state.undoStack.at(-1);
+  if (!entry || undoing) return;
+  undoing = true;
+  try {
+    await act(async () => {
+      try {
+        if (entry.action === 'add') for (const id of entry.ids) await api.deleteTransaction(id);
+        if (entry.action === 'edit') await api.saveTransaction(entry.tx);
+        if (entry.action === 'delete') await api.restoreTransaction(entry.tx);
+      } catch (e) {
+        if (isNetworkError(e)) throw e; // появится связь — можно будет повторить
+        setUndo(state.undoStack.filter((x) => x !== entry));
+        throw new Error('Не удалось отменить: эту операцию уже изменили или удалили');
+      }
+      setUndo(state.undoStack.filter((x) => x !== entry));
+    }, `Отменено ${entry.text}`);
+  } catch { /* показано */ } finally {
+    undoing = false;
+  }
+}
+
+export const saveTransaction = (t, before) => act(async () => {
+  const saved = await api.saveTransaction(t);
+  remember(t.id
+    ? { action: 'edit', tx: before, text: `изменение: ${describeTx(before)}` }
+    : { action: 'add', ids: [saved.id], text: `добавление: ${describeTx(t)}` });
+}, t.id ? 'Изменения сохранены' : 'Операция добавлена');
 // Несколько операций разом (из распознанного скриншота) одним запросом:
 // при ошибке не сохраняется ни одна, и повторное нажатие не создаст дублей.
 export const importTransactions = (list) =>
-  act(() => api.insertTransactions(list), `Добавлено операций: ${list.length}`);
+  act(async () => {
+    const rows = await api.insertTransactions(list);
+    remember({ action: 'add', ids: rows.map((r) => r.id), text: `добавление списком: ${rows.length} шт.` });
+  }, `Добавлено операций: ${list.length}`);
 
-export const deleteTransaction = (id) => act(() => api.deleteTransaction(id), 'Операция удалена');
+export const deleteTransaction = (t) => act(async () => {
+  await api.deleteTransaction(t.id);
+  remember({ action: 'delete', tx: t, text: `удаление: ${describeTx(t)}` });
+}, 'Операция удалена');
 export const saveAccount = (a) => act(() => api.saveAccount(a), 'Счёт сохранён');
 
 // Стартовые остатки сразу для нескольких счетов: [{ account, initial_balance }].
@@ -334,7 +388,7 @@ export async function setupHousehold(mode, { name, code, displayName }) {
 
 // При выходе снимок данных стирается: на устройстве не остаётся чужих денег.
 export async function signOut() {
-  try { localStorage.removeItem(SNAPSHOT_KEY); localStorage.removeItem(ADVICE_KEY); } catch { /* хранилище недоступно */ }
+  try { localStorage.removeItem(SNAPSHOT_KEY); localStorage.removeItem(ADVICE_KEY); localStorage.removeItem(UNDO_KEY); } catch { /* хранилище недоступно */ }
   if (state.offline) {
     state.offline = null;
     state.session = null;

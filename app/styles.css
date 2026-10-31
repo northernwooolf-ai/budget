@@ -1053,6 +1053,34 @@ html.modal-open { overflow: hidden; }
 .advisor-actions { justify-content: flex-end; }
 .advisor .section { gap: 0; }
 
+/* Свайп влево по операции: красная подсказка едет справа вместе со строкой. */
+.swipeable { position: relative; touch-action: pan-y; transition: transform .18s ease; }
+.swipeable.swipe-moving { transition: none; }
+.swipeable::after {
+  content: 'Удалить'; position: absolute; top: 0; bottom: 0; left: 100%; width: 100vw;
+  display: flex; align-items: center; padding-left: 18px;
+  background: var(--negative); color: #fff; font-weight: 600; opacity: .6; pointer-events: none;
+}
+.swipeable.swipe-armed::after { opacity: 1; }
+.picked-list { overflow-x: clip; }
+.delete-preview { padding: 4px 0; min-height: 0; }
+@media (prefers-reduced-motion: reduce) { .swipeable { transition: none; } }
+
+/* Круглая кнопка отмены рядом с «+». */
+.fab-undo {
+  position: fixed; right: 90px; bottom: calc(var(--nav-h) + 26px + env(safe-area-inset-bottom)); z-index: 21;
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border);
+  display: grid; place-items: center; background: var(--surface); color: var(--text);
+  box-shadow: 0 4px 12px rgb(0 0 0 / .3); transition: transform .2s ease, opacity .2s ease;
+}
+.fab-undo.hidden { transform: translateY(40px); opacity: 0; pointer-events: none; }
+.fab-undo-count {
+  position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
+  background: var(--primary); color: var(--primary-ink); font-size: .7rem; font-weight: 700; line-height: 18px; text-align: center;
+}
+@media (min-width: 900px) { .fab-undo { display: none; } }
+@media (prefers-reduced-motion: reduce) { .fab-undo { transition: none; } }
+
 /* Лимиты по разделам */
 .limit-sections { display: flex; flex-direction: column; gap: 14px; }
 .limit-section { display: flex; flex-direction: column; gap: 10px; }

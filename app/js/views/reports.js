@@ -1,13 +1,14 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610312014';
-import { state, isAdmin } from '../store.js?v=2610312014';
-import { LimitAdvisor, hasAdvice } from './limit-advisor.js?v=2610312014';
-import { expanded, toggleIn } from '../ui-state.js?v=2610312014';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610312014';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitTree } from '../categories.js?v=2610312014';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610312014';
-import { Icon, MonthSwitcher, vLongPress } from '../components.js?v=2610312014';
-import { CashbackHistory } from './cashback.js?v=2610312014';
+import { api } from '../api.js?v=2610312124';
+import { state, isAdmin } from '../store.js?v=2610312124';
+import { LimitAdvisor, hasAdvice } from './limit-advisor.js?v=2610312124';
+import { expanded, toggleIn } from '../ui-state.js?v=2610312124';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610312124';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitTree } from '../categories.js?v=2610312124';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610312124';
+import { Icon, MonthSwitcher, vLongPress, vSwipeLeft } from '../components.js?v=2610312124';
+import { swipeDelete } from './operations.js?v=2610312124';
+import { CashbackHistory } from './cashback.js?v=2610312124';
 
 const limitDate = (iso) => parseIso(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
 
@@ -41,7 +42,7 @@ function remembered(key, fallback) {
 
 export const ReportsView = {
   components: { Icon, MonthSwitcher, RingChart, TrendChart, LimitAdvisor, LimitBar, CashbackHistory },
-  directives: { longPress: vLongPress },
+  directives: { longPress: vLongPress, swipeLeft: vSwipeLeft },
   emits: ['edit', 'copy'],
   setup() {
     const open = expanded.reportGroups;
@@ -177,7 +178,7 @@ export const ReportsView = {
     return {
       state, advising, admin, open, toggle, spendView, trendMode, months, subject, drill, spending, ring, selectSlice, limits, limitsEmpty, openLimits, toggleLimit,
       history, historyError, trendSeries, expenseGroups, expenseTree, groupLabel, Math, flowKind, flow, toggleFlow,
-      picked, pickedList, catById, accName, shortDate,
+      picked, pickedList, catById, accName, shortDate, swipeDelete,
       money: rub, // в отчётах — итоги, показываем без копеек
       exact: money, // а суммы отдельных трат — как есть
     };
@@ -248,7 +249,7 @@ export const ReportsView = {
             <button v-if="picked" type="button" class="chip-x" aria-label="Закрыть список" @click="picked = null">×</button>
           </div>
           <p v-if="!pickedList.items.length" class="hint">{{ flow.none }}</p>
-          <button v-for="t in pickedList.items" :key="t.id" type="button" class="tx-row" v-long-press="() => $emit('copy', t)" @click="$emit('edit', t)">
+          <button v-for="t in pickedList.items" :key="t.id" type="button" class="tx-row" v-long-press="() => $emit('copy', t)" v-swipe-left="swipeDelete(t)" @click="$emit('edit', t)">
             <span class="tx-icon" aria-hidden="true">{{ catById[t.category_id]?.icon ?? '❔' }}</span>
             <span class="tx-main">
               <span class="tx-title">{{ t.note || catById[t.category_id]?.name || 'Без категории' }}</span>

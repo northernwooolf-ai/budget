@@ -1,8 +1,8 @@
 // Мелкие общие элементы интерфейса.
 import { ref, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import Sortable from 'sortablejs';
-import { state, shiftMonth } from './store.js?v=2610312014';
-import { monthLabel } from './utils.js?v=2610312014';
+import { state, shiftMonth } from './store.js?v=2610312124';
+import { monthLabel } from './utils.js?v=2610312124';
 
 const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -32,6 +32,7 @@ const ICONS = {
   lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4',
   unlock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 7.6-1.8',
   undo: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
+  rotateBack: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
   edit: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
   eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
   eyeOff: 'M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2',
@@ -82,6 +83,67 @@ export const vLongPress = {
     }, true);
   },
   updated(el, binding) { el._longPress = binding.value; },
+};
+
+// Длинный свайп влево: строка едет за пальцем, из-под неё появляется подсказка, а отпускание за порогом вызывает
+// переданную функцию. Значение null — свайпа у строки нет. Удержание пальца на месте остаётся за vLongPress.
+const SWIPE_START = 12;     // с какого сдвига жест считается свайпом
+const SWIPE_RATIO = 0.45;   // какая доля ширины строки нужна, чтобы сработало
+const SWIPE_MIN = 120;      // но не меньше стольких пикселей
+
+export const vSwipeLeft = {
+  mounted(el, binding) {
+    el._swipeLeft = binding.value;
+    el.classList.toggle('swipeable', !!binding.value);
+    let start = null, active = false, armed = false, swiped = false;
+    const reset = () => {
+      start = null;
+      active = false;
+      armed = false;
+      el.classList.remove('swipe-moving', 'swipe-armed');
+      el.style.transform = '';
+    };
+    el.addEventListener('pointerdown', (e) => {
+      swiped = false;
+      if (e.button || !el._swipeLeft) return;
+      start = { x: e.clientX, y: e.clientY, at: e.timeStamp };
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!start) return;
+      const dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (!active) {
+        if (Math.abs(dx) < SWIPE_START && Math.abs(dy) < SWIPE_START) return;
+        // Другой жест: вертикальная прокрутка, движение вправо или палец уже долго стоял.
+        if (dx > -SWIPE_START || Math.abs(dy) * 1.5 > Math.abs(dx) || e.timeStamp - start.at > LONG_PRESS_MS) return reset();
+        active = true;
+        el.classList.add('swipe-moving');
+        el.setPointerCapture?.(e.pointerId);
+      }
+      const shift = Math.min(0, dx), reached = -shift >= Math.max(SWIPE_MIN, el.offsetWidth * SWIPE_RATIO);
+      if (reached && !armed) navigator.vibrate?.(30);
+      armed = reached;
+      el.classList.toggle('swipe-armed', armed);
+      el.style.transform = `translateX(${shift}px)`;
+    });
+    el.addEventListener('pointerup', () => {
+      const run = armed && el._swipeLeft;
+      swiped = active;
+      reset();
+      if (run) run();
+    });
+    el.addEventListener('pointercancel', reset);
+    // Отпускание пальца после свайпа не должно считаться ещё и обычным нажатием.
+    el.addEventListener('click', (e) => {
+      if (!swiped) return;
+      swiped = false;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);
+  },
+  updated(el, binding) {
+    el._swipeLeft = binding.value;
+    el.classList.toggle('swipeable', !!binding.value);
+  },
 };
 
 // Кнопка с подтверждением: первое нажатие спрашивает, второе выполняет.

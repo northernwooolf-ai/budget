@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610312014';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610312014';
-import { limitStatus } from '../categories.js?v=2610312014';
-import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610312014';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610312014';
-import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610312014';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress } from '../components.js?v=2610312014';
-import { useLookups } from './operations.js?v=2610312014';
-import { CashbackCard } from './cashback.js?v=2610312014';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610312014';
+import { api } from '../api.js?v=2610312124';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610312124';
+import { limitStatus } from '../categories.js?v=2610312124';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610312124';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610312124';
+import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610312124';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress, vSwipeLeft } from '../components.js?v=2610312124';
+import { useLookups, swipeDelete } from './operations.js?v=2610312124';
+import { CashbackCard } from './cashback.js?v=2610312124';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610312124';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
@@ -253,7 +253,7 @@ const StartBalances = {
 // Выписка: все движения по счёту и остаток после каждого.
 const AccountStatement = {
   components: { Modal, Icon, CardChip },
-  directives: { longPress: vLongPress },
+  directives: { longPress: vLongPress, swipeLeft: vSwipeLeft },
   props: { account: Object },
   emits: ['close', 'edit', 'copy', 'edit-account'],
   setup(props) {
@@ -291,7 +291,7 @@ const AccountStatement = {
     });
 
     const shortDate = (iso) => parseIso(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: '2-digit' });
-    return { account, balance, items, rows, money, shortDate, creditInfo, admin: computed(isAdmin) };
+    return { account, balance, items, rows, money, shortDate, creditInfo, swipeDelete, admin: computed(isAdmin) };
   },
   template: `
     <modal :title="account.icon + ' ' + account.name" @close="$emit('close')">
@@ -307,7 +307,7 @@ const AccountStatement = {
       <p v-if="rows === null" class="empty">Загрузка…</p>
       <p v-else-if="!items.length" class="empty">Движений по счёту пока нет</p>
       <div v-else class="list statement">
-        <button v-for="i in items.slice(0, 300)" :key="i.t.id" class="tx-row" v-long-press="() => $emit('copy', i.t)" @click="$emit('edit', i.t)">
+        <button v-for="i in items.slice(0, 300)" :key="i.t.id" class="tx-row" v-long-press="() => $emit('copy', i.t)" v-swipe-left="swipeDelete(i.t)" @click="$emit('edit', i.t)">
           <span class="tx-icon" aria-hidden="true">{{ i.icon }}</span>
           <span class="tx-main">
             <span class="tx-title">{{ i.title }}</span>

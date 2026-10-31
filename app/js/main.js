@@ -1,18 +1,18 @@
-import { createApp, ref, onMounted, onBeforeUnmount } from 'vue';
-import { state, init } from './store.js?v=2610312014';
-import { localGet, localSet } from './utils.js?v=2610312014';
-import { Icon } from './components.js?v=2610312014';
-import { appearance } from './appearance.js?v=2610312014';
-import { lock } from './lock.js?v=2610312014';
-import { LockScreen } from './views/lock-screen.js?v=2610312014';
-import { AuthView, OnboardingView } from './views/auth.js?v=2610312014';
-import { OperationsView, TxEditor, copyOfTx } from './views/operations.js?v=2610312014';
-import { HomeView } from './views/home.js?v=2610312014';
-import { ReportsView } from './views/reports.js?v=2610312014';
-import { SettingsView } from './views/settings.js?v=2610312014';
-import { ImportView } from './views/import.js?v=2610312014';
-import { AssistantChat } from './views/assistant.js?v=2610312014';
-import { simpleView } from './ui-state.js?v=2610312014';
+import { createApp, ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { state, init, undoLast } from './store.js?v=2610312124';
+import { localGet, localSet } from './utils.js?v=2610312124';
+import { Icon } from './components.js?v=2610312124';
+import { appearance } from './appearance.js?v=2610312124';
+import { lock } from './lock.js?v=2610312124';
+import { LockScreen } from './views/lock-screen.js?v=2610312124';
+import { AuthView, OnboardingView } from './views/auth.js?v=2610312124';
+import { OperationsView, TxEditor, TxDeleteConfirm, deletingTx, copyOfTx } from './views/operations.js?v=2610312124';
+import { HomeView } from './views/home.js?v=2610312124';
+import { ReportsView } from './views/reports.js?v=2610312124';
+import { SettingsView } from './views/settings.js?v=2610312124';
+import { ImportView } from './views/import.js?v=2610312124';
+import { AssistantChat } from './views/assistant.js?v=2610312124';
+import { simpleView } from './ui-state.js?v=2610312124';
 
 const TABS = [
   { id: 'home', label: 'Главная', icon: 'home' },
@@ -23,7 +23,7 @@ const TABS = [
 ];
 
 const App = {
-  components: { Icon, AuthView, OnboardingView, OperationsView, TxEditor, HomeView, ReportsView, SettingsView, LockScreen, ImportView, AssistantChat },
+  components: { Icon, AuthView, OnboardingView, OperationsView, TxEditor, TxDeleteConfirm, HomeView, ReportsView, SettingsView, LockScreen, ImportView, AssistantChat },
   setup() {
     const saved = localGet('tab');
     const tab = ref(TABS.some((t) => t.id === saved) ? saved : 'home');
@@ -55,7 +55,9 @@ const App = {
 
     const savedAtLabel = (ts) => new Date(ts).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-    return { state, appearance, lock, TABS, tab, editor, setTab, openEditor, openCopy, fabHidden, fabOpen, fabPick, importing, savedAtLabel, simpleView };
+    const undoTitle = computed(() => (state.undoStack.length ? `Отменить ${state.undoStack.at(-1).text}` : ''));
+
+    return { state, appearance, lock, TABS, tab, editor, setTab, openEditor, openCopy, fabHidden, fabOpen, fabPick, importing, savedAtLabel, simpleView, deletingTx, undoLast, undoTitle };
   },
   template: `
     <div v-if="appearance.bg" class="app-bg" :style="{ backgroundImage: 'url(' + appearance.bg + ')' }" aria-hidden="true"></div>
@@ -77,6 +79,7 @@ const App = {
         <button class="btn primary nav-add" @click="openEditor(null)"><icon name="plus"/> Добавить операцию</button>
         <button v-if="!state.offline" class="btn nav-add" @click="importing = 'shot'"><icon name="camera"/> Загрузить скриншот</button>
         <button v-if="!state.offline" class="btn nav-add" @click="importing = 'voice'"><icon name="mic"/> Надиктовать</button>
+        <button v-if="!state.offline && state.undoStack.length" class="btn nav-add" :title="undoTitle" @click="undoLast"><icon name="rotateBack"/> Отменить ({{ state.undoStack.length }})</button>
       </nav>
       <main :class="['main', { 'main-chat': tab==='ask' && !simpleView }]">
         <home-view v-if="tab==='home' || simpleView" @edit="openEditor" @copy="openCopy"/>
@@ -92,6 +95,9 @@ const App = {
           <button type="button" class="fab-round arc-2" role="menuitem" :tabindex="fabOpen ? 0 : -1" title="Диктовать" aria-label="Диктовать" @click="fabPick('voice')"><icon name="mic" :size="24"/></button>
           <button type="button" class="fab-round arc-3" role="menuitem" :tabindex="fabOpen ? 0 : -1" title="Новая операция" aria-label="Новая операция" @click="fabPick('tx')"><icon name="coin" :size="24"/></button>
         </div>
+        <button v-if="state.undoStack.length" :class="['fab-undo', { hidden: fabHidden || fabOpen }]" :title="undoTitle" :aria-label="undoTitle" @click="undoLast">
+          <icon name="rotateBack" :size="22"/><span class="fab-undo-count" aria-hidden="true">{{ state.undoStack.length }}</span>
+        </button>
         <button :class="['fab', { hidden: fabHidden, open: fabOpen }]" :aria-expanded="fabOpen" aria-haspopup="menu"
           aria-label="Добавить" @click="fabOpen = !fabOpen">
           <icon name="plus" :size="28"/>
@@ -99,6 +105,7 @@ const App = {
       </template>
       <tx-editor v-if="editor" :tx="editor.tx" @close="editor = null"/>
       <import-view v-if="importing" :mode="importing" @close="importing = null"/>
+      <tx-delete-confirm v-if="deletingTx" :tx="deletingTx" @close="deletingTx = null"/>
     </div>
     <div v-if="state.toast" :class="['toast', state.toast.type]" role="status">{{ state.toast.text }}</div>`,
 };

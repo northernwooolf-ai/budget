@@ -3,8 +3,8 @@
 import {
   friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS,
   DEFAULT_ACCOUNTS, DEFAULT_CATEGORY_GROUPS, DEFAULT_LOOSE_CATEGORIES,
-} from './api-common.js?v=2610312014';
-import { pick, isoDate, localGet, localSet } from './utils.js?v=2610312014';
+} from './api-common.js?v=2610312124';
+import { pick, isoDate, localGet, localSet } from './utils.js?v=2610312124';
 
 const KEY = 'budget-demo-db-v3';
 const PARTNER_ID = 'demo-partner';
@@ -326,11 +326,17 @@ export default {
   async insertTransactions(list) {
     await delay();
     list.forEach(checkTx); // сначала проверить все — сохраняются все или ни одной
-    list.forEach((t) => upsert('transactions', TX_FIELDS, t));
+    return list.map((t) => ({ id: upsert('transactions', TX_FIELDS, t).id }));
   },
   async deleteTransaction(id) {
     checkTx({ id });
     db.transactions = db.transactions.filter((t) => t.id !== id);
+    notify();
+  },
+  async restoreTransaction(t) {
+    await delay();
+    checkTx({ spent_by: t.spent_by });
+    db.transactions.push({ ...JSON.parse(JSON.stringify(t)), household_id: myHousehold(), created_by: me(), updated_at: now() });
     notify();
   },
 
