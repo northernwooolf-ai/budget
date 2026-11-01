@@ -2,12 +2,12 @@
 // уходят в GigaChat, предложенные лимиты можно поправить или снять галочку, и только потом они применяются.
 // Предложение хранится на устройстве, пока его явно не применят или не отменят.
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610312124';
-import { state, saveCategoryLimits, ADVICE_KEY, toast } from '../store.js?v=2610312124';
-import { isoDate, parseIso, today, rub, money, parseAmount, amountToInput } from '../utils.js?v=2610312124';
-import { categoryTree, categoryLabel, groupLabel } from '../categories.js?v=2610312124';
-import { expanded, toggleIn } from '../ui-state.js?v=2610312124';
-import { Icon } from '../components.js?v=2610312124';
+import { api } from '../api.js?v=2611011509';
+import { state, saveCategoryLimits, ADVICE_KEY, toast } from '../store.js?v=2611011509';
+import { isoDate, parseIso, today, rub, money, parseAmount, amountToInput } from '../utils.js?v=2611011509';
+import { categoryTree, categoryLabel, groupLabel } from '../categories.js?v=2611011509';
+import { expanded, toggleIn } from '../ui-state.js?v=2611011509';
+import { Icon } from '../components.js?v=2611011509';
 
 const DAYS = 90;
 const WINDOW_DAYS = 30; // для расчёта период делится на три отрезка: так виден разовый всплеск

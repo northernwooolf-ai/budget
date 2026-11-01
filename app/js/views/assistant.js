@@ -2,12 +2,12 @@
 // которую приложение собирает здесь же: остатки, кэшбэки, итоги по категориям за 13 месяцев
 // и операции последних двух месяцев. Готовые итоги считаем сами — модели плохо даётся сложение.
 import { ref, reactive, nextTick, onBeforeUnmount } from 'vue';
-import { api } from '../api.js?v=2610312124';
-import { state } from '../store.js?v=2610312124';
-import { isoDate, addMonths, monthStart, today, bySort } from '../utils.js?v=2610312124';
-import { ACCOUNT_TYPES, typeOf, creditState } from '../account-types.js?v=2610312124';
-import { Icon } from '../components.js?v=2610312124';
-import { speechSupported, listen } from '../speech.js?v=2610312124';
+import { api } from '../api.js?v=2611011509';
+import { state } from '../store.js?v=2611011509';
+import { isoDate, addMonths, monthStart, today, bySort } from '../utils.js?v=2611011509';
+import { ACCOUNT_TYPES, typeOf, creditState } from '../account-types.js?v=2611011509';
+import { Icon } from '../components.js?v=2611011509';
+import { speechSupported, listen } from '../speech.js?v=2611011509';
 
 const HISTORY_MONTHS = 13;  // текущий месяц и 12 предыдущих — хватит на «за год» в любом смысле
 const RECENT_DAYS = 60;     // операции целиком — только за последние дни

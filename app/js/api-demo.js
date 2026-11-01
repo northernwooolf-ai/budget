@@ -3,8 +3,8 @@
 import {
   friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS,
   DEFAULT_ACCOUNTS, DEFAULT_CATEGORY_GROUPS, DEFAULT_LOOSE_CATEGORIES,
-} from './api-common.js?v=2610312124';
-import { pick, isoDate, localGet, localSet } from './utils.js?v=2610312124';
+} from './api-common.js?v=2611011509';
+import { pick, isoDate, localGet, localSet } from './utils.js?v=2611011509';
 
 const KEY = 'budget-demo-db-v3';
 const PARTNER_ID = 'demo-partner';
@@ -401,6 +401,27 @@ export default {
   },
 
   // В демо вместо GigaChat — среднее за месяцы, округлённое до сотен.
+  async parseCashbacks(body) {
+    await new Promise((r) => setTimeout(r, 900));
+    const cashbacks = [], unknown = [];
+    let card = null;
+    for (const line of body.cashback_list.split('\n').map((s) => s.trim()).filter(Boolean)) {
+      const named = body.accounts.find((a) => line.toLowerCase().includes(a.name.toLowerCase()));
+      if (named) card = named;
+      const rest = named ? line.replace(new RegExp(named.name, 'i'), '') : line;
+      const found = [...rest.matchAll(/([^,;:\d%—-]+?)\s*[—-]?\s*(\d+(?:[.,]\d+)?)\s*%/g)];
+      if (!card && found.length) { unknown.push(line); continue; }
+      if (!found.length && !named) unknown.push(line);
+      for (const [, label, percent] of found) {
+        const name = label.trim();
+        cashbacks.push({
+          account_id: card.id, label: name, percent: Number(percent.replace(',', '.')),
+          category_ids: body.categories.filter((c) => c.name.toLowerCase().includes(name.toLowerCase().slice(0, 5))).map((c) => c.id),
+        });
+      }
+    }
+    return { cashbacks, unknown };
+  },
   async adviseLimits(body) {
     await new Promise((r) => setTimeout(r, 900));
     return { limits: body.advise.map((r) => ({ id: r.id, limit: Math.max(100, Math.round(r.average / 100) * 100), reason: 'Демо: среднее за месяцы' })) };

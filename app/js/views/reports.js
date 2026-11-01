@@ -1,14 +1,14 @@
 import { ref, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610312124';
-import { state, isAdmin } from '../store.js?v=2610312124';
-import { LimitAdvisor, hasAdvice } from './limit-advisor.js?v=2610312124';
-import { expanded, toggleIn } from '../ui-state.js?v=2610312124';
-import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2610312124';
-import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitTree } from '../categories.js?v=2610312124';
-import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2610312124';
-import { Icon, MonthSwitcher, vLongPress, vSwipeLeft } from '../components.js?v=2610312124';
-import { swipeDelete } from './operations.js?v=2610312124';
-import { CashbackHistory } from './cashback.js?v=2610312124';
+import { api } from '../api.js?v=2611011509';
+import { state, isAdmin } from '../store.js?v=2611011509';
+import { LimitAdvisor, hasAdvice } from './limit-advisor.js?v=2611011509';
+import { expanded, toggleIn } from '../ui-state.js?v=2611011509';
+import { rub, money, isoDate, parseIso, addMonths, monthLabel, bySort, localGet, localSet } from '../utils.js?v=2611011509';
+import { categoryTree, groupLabel, categoryLabel, spendingMaps, limitTree } from '../categories.js?v=2611011509';
+import { RingChart, TrendChart, SLICE_COLORS, OTHER_COLOR } from '../charts.js?v=2611011509';
+import { Icon, MonthSwitcher, vLongPress, vSwipeLeft } from '../components.js?v=2611011509';
+import { swipeDelete } from './operations.js?v=2611011509';
+import { CashbackHistory } from './cashback.js?v=2611011509';
 
 const limitDate = (iso) => parseIso(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
 

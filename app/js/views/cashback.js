@@ -1,14 +1,14 @@
 // Кэшбэки: раз в месяц выбираете по картам («Супермаркеты 7%»), привязываете к своим категориям,
 // а приложение подсказывает, какой картой что выгоднее покупать.
 import { ref, computed, watch, nextTick } from 'vue';
-import { api } from '../api.js?v=2610312124';
-import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2610312124';
-import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2610312124';
-import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2610312124';
-import { Icon, Modal } from '../components.js?v=2610312124';
-import { toggleIn } from '../ui-state.js?v=2610312124';
-import { CardChip, AccountSelect } from '../cards.js?v=2610312124';
-import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2610312124';
+import { api } from '../api.js?v=2611011509';
+import { state, saveCashbackMonth, currentMonthIso, toast } from '../store.js?v=2611011509';
+import { monthLabel, isoDate, addMonths, parseIso, parseAmount, bySort } from '../utils.js?v=2611011509';
+import { categoryTree, groupLabel, categoryLabel } from '../categories.js?v=2611011509';
+import { Icon, Modal } from '../components.js?v=2611011509';
+import { toggleIn } from '../ui-state.js?v=2611011509';
+import { CardChip, AccountSelect } from '../cards.js?v=2611011509';
+import { ACCOUNT_TYPES, typeOf } from '../account-types.js?v=2611011509';
 
 // Карты, по которым бывает кэшбэк: наличные и вклады не нужны.
 const cardAccounts = () => state.accounts
@@ -176,6 +176,67 @@ const CashbackEditor = {
       }));
     }
 
+    // Список кэшбэков текстом: GigaChat раскладывает его по картам, а строки встают в блоки своих карт.
+    // В базу они попадут после «Сохранить кэшбэк», до этого их можно поправить.
+    const pasting = ref(false);
+    const pasteText = ref('');
+    const parsing = ref(false);
+    const pasteResult = ref(null); // { added, updated, unknown }
+    const pastePlaceholder = computed(() => [
+      `${cards.value[0]?.name ?? 'Название карты'}: Супермаркеты 5%, АЗС 3%`,
+      cards.value[1]?.name ?? 'Другая карта', 'Рестораны 7%', 'Все покупки 1,5%',
+    ].join('\n'));
+    watch(month, () => { pasteResult.value = null; });
+
+    // Как этот кэшбэк уже привязывали к категориям в прошлые месяцы: такая привязка надёжнее догадки.
+    async function knownBindings() {
+      const known = new Map();
+      try {
+        for (const c of await api.listCashbackHistory()) { // сначала новые
+          const key = c.label.trim().toLowerCase();
+          if (c.category_ids?.length && !known.has(key)) known.set(key, c.category_ids);
+        }
+      } catch { /* обойдёмся предложением GigaChat */ }
+      return known;
+    }
+
+    async function parseList() {
+      if (!pasteText.value.trim()) return toast('Вставьте список кэшбэков', 'error');
+      parsing.value = true;
+      try {
+        const categories = [...tree.value.sections.flatMap((s) => s.items.map((c) => ({ id: c.id, name: `${s.group.name} / ${c.name}` }))),
+          ...tree.value.loose.map((c) => ({ id: c.id, name: c.name }))];
+        const [{ cashbacks, unknown }, known] = await Promise.all([
+          api.parseCashbacks({ cashback_list: pasteText.value, accounts: cards.value.map((a) => ({ id: a.id, name: a.name })), categories }),
+          knownBindings(),
+        ]);
+        if (!cashbacks.length) {
+          pasteResult.value = { added: 0, updated: 0, unknown };
+          return toast('Не удалось разобрать список', 'error');
+        }
+        let added = 0, updated = 0;
+        for (const c of cashbacks) {
+          const key = c.label.toLowerCase();
+          const percent = String(c.percent).replace('.', ',');
+          const category_ids = known.get(key) ?? c.category_ids;
+          const same = rows.value.find((r) => r.account_id === c.account_id && r.label.trim().toLowerCase() === key);
+          if (same) {
+            same.percent = percent;
+            if (!same.category_ids.length) same.category_ids = [...category_ids];
+            updated++;
+          } else {
+            rows.value.push(withKey({ account_id: c.account_id, label: c.label, percent, category_ids: [...category_ids] }));
+            added++;
+          }
+        }
+        pasteResult.value = { added, updated, unknown };
+        pasting.value = false;
+        pasteText.value = '';
+      } catch (e) {
+        toast(e.message, 'error');
+      } finally { parsing.value = false; }
+    }
+
     // Новая строка появляется над кнопкой «Добавить кэшбэк», у выбранной карты;
     // в общий список по картам она уходит после сохранения.
     async function addRow() {
@@ -269,6 +330,7 @@ const CashbackEditor = {
     return {
       month, rows, loading, busy, error, badKey, cards, tree, cardId, byCard, drafts, currentCard, LABELS,
       shift: (n) => { month.value = addMonths(month.value, n); },
+      state, pasting, pasteText, parsing, pasteResult, pastePlaceholder, parseList,
       copyPrevious, addRow, removeRow, chipsOf, unpick, pickingFor, cardGroups, save, monthLabel, groupLabel, categoryLabel,
     };
   },
@@ -282,6 +344,28 @@ const CashbackEditor = {
         </div>
         <p class="hint">Впишите категории кэшбэка, которые выбрали в банках, и привяжите их к своим категориям —
           тогда при вводе траты приложение подскажет, какой картой выгоднее. Без привязки кэшбэк считается «на все покупки».</p>
+
+        <button v-if="!pasting" type="button" class="btn" :disabled="!!state.offline" @click="pasting = true; pasteResult = null">Вставить списком через GigaChat</button>
+        <div v-else class="cb-new stack">
+          <label class="field"><span>Список кэшбэков на {{ monthLabel(month) }}</span>
+            <textarea v-model="pasteText" rows="6" maxlength="4000" :disabled="parsing"
+              :placeholder="pastePlaceholder"></textarea>
+            <small class="hint">Названия карт пишите как в приложении. Порядок и оформление любые.</small>
+          </label>
+          <div class="btn-row">
+            <button type="button" class="btn ghost" :disabled="parsing" @click="pasting = false">Отмена</button>
+            <button type="button" class="btn primary" :disabled="parsing" @click="parseList">{{ parsing ? 'GigaChat разбирает…' : 'Разобрать' }}</button>
+          </div>
+        </div>
+        <div v-if="pasteResult" class="cb-hint" role="status">
+          <span v-if="pasteResult.added || pasteResult.updated">
+            Добавлено: {{ pasteResult.added }}, обновлено: {{ pasteResult.updated }}. Проверьте строки и категории, затем нажмите «Сохранить кэшбэк».
+          </span>
+        </div>
+        <div v-if="pasteResult?.unknown.length" class="warn-box" role="alert">
+          <b>Не удалось разобрать, добавьте вручную:</b>
+          <span v-for="(u, i) in pasteResult.unknown" :key="i">{{ u }}</span>
+        </div>
 
         <!-- Карта, под ней новые (ещё не сохранённые) строки, под ними кнопка — она съезжает вниз с каждой строкой. -->
         <div class="cb-new stack">

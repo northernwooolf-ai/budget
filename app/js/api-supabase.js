@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2610312124';
-import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2610312124';
-import { pick } from './utils.js?v=2610312124';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=2611011509';
+import { friendlyError, ACCOUNT_FIELDS, CATEGORY_FIELDS, GROUP_FIELDS, TX_FIELDS, CASHBACK_FIELDS } from './api-common.js?v=2611011509';
+import { pick } from './utils.js?v=2611011509';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -149,6 +149,7 @@ export default {
   recognize: (body) => invokeFunction('recognize', body),
   ask: (body) => invokeFunction('recognize', body),
   adviseLimits: (body) => invokeFunction('recognize', body),
+  parseCashbacks: (body) => invokeFunction('recognize', body),
   checkRecognizer: () => invokeFunction('recognize', { check: true }),
 
   // Изменения, сделанные вторым человеком, приходят сразу.

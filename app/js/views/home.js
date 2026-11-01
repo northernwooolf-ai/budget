@@ -1,15 +1,15 @@
 // Главная: сводка, счета по группам, выписка по счёту и редактор счёта.
 import { ref, reactive, computed, watch } from 'vue';
-import { api } from '../api.js?v=2610312124';
-import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2610312124';
-import { limitStatus } from '../categories.js?v=2610312124';
-import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2610312124';
-import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2610312124';
-import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2610312124';
-import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress, vSwipeLeft } from '../components.js?v=2610312124';
-import { useLookups, swipeDelete } from './operations.js?v=2610312124';
-import { CashbackCard } from './cashback.js?v=2610312124';
-import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2610312124';
+import { api } from '../api.js?v=2611011509';
+import { state, isAdmin, saveAccount, saveStartBalances, deleteAccount, setArchived, reorder, toast } from '../store.js?v=2611011509';
+import { limitStatus } from '../categories.js?v=2611011509';
+import { expanded, toggleIn, simpleView } from '../ui-state.js?v=2611011509';
+import { money, rub, parseAmount, amountToInput, bySort, localGet, localSet, monthLabel, parseIso } from '../utils.js?v=2611011509';
+import { ACCOUNT_TYPES, typeOf, peopleNote, canBeLiquid, creditState } from '../account-types.js?v=2611011509';
+import { Icon, Modal, EmojiPicker, ConfirmButton, DragLockButton, vSortable, vLongPress, vSwipeLeft } from '../components.js?v=2611011509';
+import { useLookups, swipeDelete } from './operations.js?v=2611011509';
+import { CashbackCard } from './cashback.js?v=2611011509';
+import { CardChip, CARD_STYLES, defaultStyle, isCardType, cardImageFromFile } from '../cards.js?v=2611011509';
 
 const balanceOf = (a) => state.balances[a.id] ?? Number(a.initial_balance);
 
